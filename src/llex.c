@@ -44,7 +44,7 @@
 /* ORDER RESERVED */
 static const char *const silX_tokens [] = {
     "and", "break", "else", "elseif",
-    "false", "for", "function", "global", "goto", "if",
+    "false", "for", "fn", "global", "goto", "if",
     "in", "local", "nil", "not", "or", "repeat",
     "return", "true", "until", "while",
     "//", "..", "...", "==", ">=", "<=", "!=",
