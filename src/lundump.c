@@ -1,11 +1,11 @@
 /*
 ** $Id: lundump.c $
-** load precompiled Lua chunks
-** See Copyright Notice in lua.h
+** load precompiled SIL chunks
+** See Copyright Notice in sil.h
 */
 
 #define lundump_c
-#define LUA_CORE
+#define SIL_CORE
 
 #include "lprefix.h"
 
@@ -13,7 +13,7 @@
 #include <limits.h>
 #include <string.h>
 
-#include "lua.h"
+#include "sil.h"
 
 #include "ldebug.h"
 #include "ldo.h"
@@ -26,25 +26,25 @@
 #include "lzio.h"
 
 
-#if !defined(luai_verifycode)
-#define luai_verifycode(L,f)  /* empty */
+#if !defined(sili_verifycode)
+#define sili_verifycode(L,f)  /* empty */
 #endif
 
 
 typedef struct {
-  lua_State *L;
+  sil_State *L;
   ZIO *Z;
   const char *name;
   Table *h;  /* list for string reuse */
   size_t offset;  /* current position relative to beginning of dump */
-  lua_Unsigned nstr;  /* number of strings in the list */
+  sil_Unsigned nstr;  /* number of strings in the list */
   lu_byte fixed;  /* dump is fixed in memory */
 } LoadState;
 
 
 static l_noret error (LoadState *S, const char *why) {
-  luaO_pushfstring(S->L, "%s: bad binary format (%s)", S->name, why);
-  luaD_throw(S->L, LUA_ERRSYNTAX);
+  silO_pushfstring(S->L, "%s: bad binary format (%s)", S->name, why);
+  silD_throw(S->L, SIL_ERRSYNTAX);
 }
 
 
@@ -55,7 +55,7 @@ static l_noret error (LoadState *S, const char *why) {
 #define loadVector(S,b,n)	loadBlock(S,b,cast_sizet(n)*sizeof((b)[0]))
 
 static void loadBlock (LoadState *S, void *b, size_t size) {
-  if (luaZ_read(S->Z, b, size) != 0)
+  if (silZ_read(S->Z, b, size) != 0)
     error(S, "truncated chunk");
   S->offset += size;
 }
@@ -64,9 +64,9 @@ static void loadBlock (LoadState *S, void *b, size_t size) {
 static void loadAlign (LoadState *S, unsigned align) {
   unsigned padding = align - cast_uint(S->offset % align);
   if (padding < align) {  /* (padding == align) means no padding */
-    lua_Integer paddingContent;
+    sil_Integer paddingContent;
     loadBlock(S, &paddingContent, padding);
-    lua_assert(S->offset % align == 0);
+    sil_assert(S->offset % align == 0);
   }
 }
 
@@ -74,7 +74,7 @@ static void loadAlign (LoadState *S, unsigned align) {
 #define getaddr(S,n,t)	cast(t *, getaddr_(S,cast_sizet(n) * sizeof(t)))
 
 static const void *getaddr_ (LoadState *S, size_t size) {
-  const void *block = luaZ_getaddr(S->Z, size);
+  const void *block = silZ_getaddr(S->Z, size);
   S->offset += size;
   if (block == NULL)
     error(S, "truncated fixed buffer");
@@ -94,8 +94,8 @@ static lu_byte loadByte (LoadState *S) {
 }
 
 
-static lua_Unsigned loadVarint (LoadState *S, lua_Unsigned limit) {
-  lua_Unsigned x = 0;
+static sil_Unsigned loadVarint (LoadState *S, sil_Unsigned limit) {
+  sil_Unsigned x = 0;
   int b;
   limit >>= 7;
   do {
@@ -119,15 +119,15 @@ static int loadInt (LoadState *S) {
 
 
 
-static lua_Number loadNumber (LoadState *S) {
-  lua_Number x;
+static sil_Number loadNumber (LoadState *S) {
+  sil_Number x;
   loadVar(S, x);
   return x;
 }
 
 
-static lua_Integer loadInteger (LoadState *S) {
-  lua_Unsigned cx = loadVarint(S, LUA_MAXUNSIGNED);
+static sil_Integer loadInteger (LoadState *S) {
+  sil_Unsigned cx = loadVarint(S, SIL_MAXUNSIGNED);
   /* decode unsigned to signed */
   if ((cx & 1) != 0)
     return l_castU2S(~(cx >> 1));
@@ -140,47 +140,47 @@ static lua_Integer loadInteger (LoadState *S) {
 ** Load a nullable string into slot 'sl' from prototype 'p'. The
 ** assignment to the slot and the barrier must be performed before any
 ** possible GC activity, to anchor the string. (Both 'loadVector' and
-** 'luaH_setint' can call the GC.)
+** 'silH_setint' can call the GC.)
 */
 static void loadString (LoadState *S, Proto *p, TString **sl) {
-  lua_State *L = S->L;
+  sil_State *L = S->L;
   TString *ts;
   TValue sv;
   size_t size = loadSize(S);
   if (size == 0) {  /* no string? */
-    lua_assert(*sl == NULL);  /* must be prefilled */
+    sil_assert(*sl == NULL);  /* must be prefilled */
     return;
   }
   else if (size == 1) {  /* previously saved string? */
-    lua_Unsigned idx = loadVarint(S, LUA_MAXUNSIGNED);  /* get its index */
+    sil_Unsigned idx = loadVarint(S, SIL_MAXUNSIGNED);  /* get its index */
     TValue stv;
-    if (novariant(luaH_getint(S->h, l_castU2S(idx), &stv)) != LUA_TSTRING)
+    if (novariant(silH_getint(S->h, l_castU2S(idx), &stv)) != SIL_TSTRING)
       error(S, "invalid string index");
     *sl = ts = tsvalue(&stv);  /* get its value */
-    luaC_objbarrier(L, p, ts);
+    silC_objbarrier(L, p, ts);
     return;  /* do not save it again */
   }
-  else if ((size -= 2) <= LUAI_MAXSHORTLEN) {  /* short string? */
-    char buff[LUAI_MAXSHORTLEN + 1];  /* extra space for '\0' */
+  else if ((size -= 2) <= SILI_MAXSHORTLEN) {  /* short string? */
+    char buff[SILI_MAXSHORTLEN + 1];  /* extra space for '\0' */
     loadVector(S, buff, size + 1);  /* load string into buffer */
-    *sl = ts = luaS_newlstr(L, buff, size);  /* create string */
-    luaC_objbarrier(L, p, ts);
+    *sl = ts = silS_newlstr(L, buff, size);  /* create string */
+    silC_objbarrier(L, p, ts);
   }
   else if (S->fixed) {  /* for a fixed buffer, use a fixed string */
     const char *s = getaddr(S, size + 1, char);  /* get content address */
-    *sl = ts = luaS_newextlstr(L, s, size, NULL, NULL);
-    luaC_objbarrier(L, p, ts);
+    *sl = ts = silS_newextlstr(L, s, size, NULL, NULL);
+    silC_objbarrier(L, p, ts);
   }
   else {  /* create internal copy */
-    *sl = ts = luaS_createlngstrobj(L, size);  /* create string */
-    luaC_objbarrier(L, p, ts);
+    *sl = ts = silS_createlngstrobj(L, size);  /* create string */
+    silC_objbarrier(L, p, ts);
     loadVector(S, getlngstr(ts), size + 1);  /* load directly in final place */
   }
   /* add string to list of saved strings */
   S->nstr++;
   setsvalue(L, &sv, ts);
-  luaH_setint(L, S->h, l_castU2S(S->nstr), &sv);
-  luaC_objbarrierback(L, obj2gco(S->h), ts);
+  silH_setint(L, S->h, l_castU2S(S->nstr), &sv);
+  silC_objbarrierback(L, obj2gco(S->h), ts);
 }
 
 
@@ -192,7 +192,7 @@ static void loadCode (LoadState *S, Proto *f) {
     f->sizecode = n;
   }
   else {
-    f->code = luaM_newvectorchecked(S->L, n, Instruction);
+    f->code = silM_newvectorchecked(S->L, n, Instruction);
     f->sizecode = n;
     loadVector(S, f->code, n);
   }
@@ -205,7 +205,7 @@ static void loadFunction(LoadState *S, Proto *f);
 static void loadConstants (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
-  f->k = luaM_newvectorchecked(S->L, n, TValue);
+  f->k = silM_newvectorchecked(S->L, n, TValue);
   f->sizek = n;
   for (i = 0; i < n; i++)
     setnilvalue(&f->k[i]);
@@ -213,24 +213,24 @@ static void loadConstants (LoadState *S, Proto *f) {
     TValue *o = &f->k[i];
     int t = loadByte(S);
     switch (t) {
-      case LUA_VNIL:
+      case SIL_VNIL:
         setnilvalue(o);
         break;
-      case LUA_VFALSE:
+      case SIL_VFALSE:
         setbfvalue(o);
         break;
-      case LUA_VTRUE:
+      case SIL_VTRUE:
         setbtvalue(o);
         break;
-      case LUA_VNUMFLT:
+      case SIL_VNUMFLT:
         setfltvalue(o, loadNumber(S));
         break;
-      case LUA_VNUMINT:
+      case SIL_VNUMINT:
         setivalue(o, loadInteger(S));
         break;
-      case LUA_VSHRSTR:
-      case LUA_VLNGSTR: {
-        lua_assert(f->source == NULL);
+      case SIL_VSHRSTR:
+      case SIL_VLNGSTR: {
+        sil_assert(f->source == NULL);
         loadString(S, f, &f->source);  /* use 'source' to anchor string */
         if (f->source == NULL)
           error(S, "bad format for constant string");
@@ -247,13 +247,13 @@ static void loadConstants (LoadState *S, Proto *f) {
 static void loadProtos (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
-  f->p = luaM_newvectorchecked(S->L, n, Proto *);
+  f->p = silM_newvectorchecked(S->L, n, Proto *);
   f->sizep = n;
   for (i = 0; i < n; i++)
     f->p[i] = NULL;
   for (i = 0; i < n; i++) {
-    f->p[i] = luaF_newproto(S->L);
-    luaC_objbarrier(S->L, f, f->p[i]);
+    f->p[i] = silF_newproto(S->L);
+    silC_objbarrier(S->L, f, f->p[i]);
     loadFunction(S, f->p[i]);
   }
 }
@@ -268,7 +268,7 @@ static void loadProtos (LoadState *S, Proto *f) {
 static void loadUpvalues (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
-  f->upvalues = luaM_newvectorchecked(S->L, n, Upvaldesc);
+  f->upvalues = silM_newvectorchecked(S->L, n, Upvaldesc);
   f->sizeupvalues = n;
   for (i = 0; i < n; i++)  /* make array valid for GC */
     f->upvalues[i].name = NULL;
@@ -288,7 +288,7 @@ static void loadDebug (LoadState *S, Proto *f) {
     f->sizelineinfo = n;
   }
   else {
-    f->lineinfo = luaM_newvectorchecked(S->L, n, ls_byte);
+    f->lineinfo = silM_newvectorchecked(S->L, n, ls_byte);
     f->sizelineinfo = n;
     loadVector(S, f->lineinfo, n);
   }
@@ -300,13 +300,13 @@ static void loadDebug (LoadState *S, Proto *f) {
       f->sizeabslineinfo = n;
     }
     else {
-      f->abslineinfo = luaM_newvectorchecked(S->L, n, AbsLineInfo);
+      f->abslineinfo = silM_newvectorchecked(S->L, n, AbsLineInfo);
       f->sizeabslineinfo = n;
       loadVector(S, f->abslineinfo, n);
     }
   }
   n = loadInt(S);
-  f->locvars = luaM_newvectorchecked(S->L, n, LocVar);
+  f->locvars = silM_newvectorchecked(S->L, n, LocVar);
   f->sizelocvars = n;
   for (i = 0; i < n; i++)
     f->locvars[i].varname = NULL;
@@ -341,7 +341,7 @@ static void loadFunction (LoadState *S, Proto *f) {
 
 
 static void checkliteral (LoadState *S, const char *s, const char *msg) {
-  char buff[sizeof(LUA_SIGNATURE) + sizeof(LUAC_DATA)]; /* larger than both */
+  char buff[sizeof(SIL_SIGNATURE) + sizeof(SILC_DATA)]; /* larger than both */
   size_t len = strlen(s);
   loadVector(S, buff, len);
   if (memcmp(s, buff, len) != 0)
@@ -350,7 +350,7 @@ static void checkliteral (LoadState *S, const char *s, const char *msg) {
 
 
 static l_noret numerror (LoadState *S, const char *what, const char *tname) {
-  const char *msg = luaO_pushfstring(S->L, "%s %s mismatch", tname, what);
+  const char *msg = silO_pushfstring(S->L, "%s %s mismatch", tname, what);
   error(S, msg);
 }
 
@@ -375,28 +375,28 @@ static void checknumformat (LoadState *S, int eq, const char *tname) {
 
 static void checkHeader (LoadState *S) {
   /* skip 1st char (already read and checked) */
-  checkliteral(S, &LUA_SIGNATURE[1], "not a binary chunk");
-  if (loadByte(S) != LUAC_VERSION)
+  checkliteral(S, &SIL_SIGNATURE[1], "not a binary chunk");
+  if (loadByte(S) != SILC_VERSION)
     error(S, "version mismatch");
-  if (loadByte(S) != LUAC_FORMAT)
+  if (loadByte(S) != SILC_FORMAT)
     error(S, "format mismatch");
-  checkliteral(S, LUAC_DATA, "corrupted chunk");
-  checknum(S, int, LUAC_INT, "int");
-  checknum(S, Instruction, LUAC_INST, "instruction");
-  checknum(S, lua_Integer, LUAC_INT, "Lua integer");
-  checknum(S, lua_Number, LUAC_NUM, "Lua number");
+  checkliteral(S, SILC_DATA, "corrupted chunk");
+  checknum(S, int, SILC_INT, "int");
+  checknum(S, Instruction, SILC_INST, "instruction");
+  checknum(S, sil_Integer, SILC_INT, "Sil integer");
+  checknum(S, sil_Number, SILC_NUM, "Sil number");
 }
 
 
 /*
 ** Load precompiled chunk.
 */
-LClosure *luaU_undump (lua_State *L, ZIO *Z, const char *name, int fixed) {
+LClosure *silU_undump (sil_State *L, ZIO *Z, const char *name, int fixed) {
   LoadState S;
   LClosure *cl;
   if (*name == '@' || *name == '=')
     name = name + 1;
-  else if (*name == LUA_SIGNATURE[0])
+  else if (*name == SIL_SIGNATURE[0])
     name = "binary string";
   S.name = name;
   S.L = L;
@@ -404,19 +404,19 @@ LClosure *luaU_undump (lua_State *L, ZIO *Z, const char *name, int fixed) {
   S.fixed = cast_byte(fixed);
   S.offset = 1;  /* fist byte was already read */
   checkHeader(&S);
-  cl = luaF_newLclosure(L, loadByte(&S));
+  cl = silF_newLclosure(L, loadByte(&S));
   setclLvalue2s(L, L->top.p, cl);
-  luaD_inctop(L);
-  S.h = luaH_new(L);  /* create list of saved strings */
+  silD_inctop(L);
+  S.h = silH_new(L);  /* create list of saved strings */
   S.nstr = 0;
   sethvalue2s(L, L->top.p, S.h);  /* anchor it */
-  luaD_inctop(L);
-  cl->p = luaF_newproto(L);
-  luaC_objbarrier(L, cl, cl->p);
+  silD_inctop(L);
+  cl->p = silF_newproto(L);
+  silC_objbarrier(L, cl, cl->p);
   loadFunction(&S, cl->p);
   if (cl->nupvalues != cl->p->sizeupvalues)
     error(&S, "corrupted chunk");
-  luai_verifycode(L, cl->p);
+  sili_verifycode(L, cl->p);
   L->top.p--;  /* pop table */
   return cl;
 }

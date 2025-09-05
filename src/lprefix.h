@@ -1,7 +1,7 @@
 /*
 ** $Id: lprefix.h $
-** Definitions for Lua code that must come before any other header file
-** See Copyright Notice in lua.h
+** Definitions for SIL code that must come before any other header file
+** See Copyright Notice in sil.h
 */
 
 #ifndef lprefix_h
@@ -11,7 +11,7 @@
 /*
 ** Allows POSIX/XSI stuff
 */
-#if !defined(LUA_USE_C89)	/* { */
+#if !defined(SIL_USE_C89)	/* { */
 
 #if !defined(_XOPEN_SOURCE)
 #define _XOPEN_SOURCE           600
@@ -22,7 +22,7 @@
 /*
 ** Allows manipulation of large files in gcc and some other compilers
 */
-#if !defined(LUA_32BITS) && !defined(_FILE_OFFSET_BITS)
+#if !defined(SIL_32BITS) && !defined(_FILE_OFFSET_BITS)
 #define _LARGEFILE_SOURCE       1
 #define _FILE_OFFSET_BITS       64
 #endif

@@ -1,7 +1,7 @@
 /*
 ** $Id: lcode.h $
-** Code generator for Lua
-** See Copyright Notice in lua.h
+** Code generator for SIL
+** See Copyright Notice in sil.h
 */
 
 #ifndef lcode_h
@@ -45,7 +45,7 @@ typedef enum BinOpr {
 #define foldbinop(op)	((op) <= OPR_SHR)
 
 
-#define luaK_codeABC(fs,o,a,b,c)	luaK_codeABCk(fs,o,a,b,c,0)
+#define silK_codeABC(fs,o,a,b,c)	silK_codeABCk(fs,o,a,b,c,0)
 
 
 typedef enum UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
@@ -55,49 +55,49 @@ typedef enum UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
 #define getinstruction(fs,e)	((fs)->f->code[(e)->u.info])
 
 
-#define luaK_setmultret(fs,e)	luaK_setreturns(fs, e, LUA_MULTRET)
+#define silK_setmultret(fs,e)	silK_setreturns(fs, e, SIL_MULTRET)
 
-#define luaK_jumpto(fs,t)	luaK_patchlist(fs, luaK_jump(fs), t)
+#define silK_jumpto(fs,t)	silK_patchlist(fs, silK_jump(fs), t)
 
-LUAI_FUNC int luaK_code (FuncState *fs, Instruction i);
-LUAI_FUNC int luaK_codeABx (FuncState *fs, OpCode o, int A, int Bx);
-LUAI_FUNC int luaK_codeABCk (FuncState *fs, OpCode o, int A, int B, int C,
+SILI_FUNC int silK_code (FuncState *fs, Instruction i);
+SILI_FUNC int silK_codeABx (FuncState *fs, OpCode o, int A, int Bx);
+SILI_FUNC int silK_codeABCk (FuncState *fs, OpCode o, int A, int B, int C,
                                             int k);
-LUAI_FUNC int luaK_codevABCk (FuncState *fs, OpCode o, int A, int B, int C,
+SILI_FUNC int silK_codevABCk (FuncState *fs, OpCode o, int A, int B, int C,
                                              int k);
-LUAI_FUNC int luaK_exp2const (FuncState *fs, const expdesc *e, TValue *v);
-LUAI_FUNC void luaK_fixline (FuncState *fs, int line);
-LUAI_FUNC void luaK_nil (FuncState *fs, int from, int n);
-LUAI_FUNC void luaK_reserveregs (FuncState *fs, int n);
-LUAI_FUNC void luaK_checkstack (FuncState *fs, int n);
-LUAI_FUNC void luaK_int (FuncState *fs, int reg, lua_Integer n);
-LUAI_FUNC void luaK_dischargevars (FuncState *fs, expdesc *e);
-LUAI_FUNC int luaK_exp2anyreg (FuncState *fs, expdesc *e);
-LUAI_FUNC void luaK_exp2anyregup (FuncState *fs, expdesc *e);
-LUAI_FUNC void luaK_exp2nextreg (FuncState *fs, expdesc *e);
-LUAI_FUNC void luaK_exp2val (FuncState *fs, expdesc *e);
-LUAI_FUNC void luaK_self (FuncState *fs, expdesc *e, expdesc *key);
-LUAI_FUNC void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k);
-LUAI_FUNC void luaK_goiftrue (FuncState *fs, expdesc *e);
-LUAI_FUNC void luaK_goiffalse (FuncState *fs, expdesc *e);
-LUAI_FUNC void luaK_storevar (FuncState *fs, expdesc *var, expdesc *e);
-LUAI_FUNC void luaK_setreturns (FuncState *fs, expdesc *e, int nresults);
-LUAI_FUNC void luaK_setoneret (FuncState *fs, expdesc *e);
-LUAI_FUNC int luaK_jump (FuncState *fs);
-LUAI_FUNC void luaK_ret (FuncState *fs, int first, int nret);
-LUAI_FUNC void luaK_patchlist (FuncState *fs, int list, int target);
-LUAI_FUNC void luaK_patchtohere (FuncState *fs, int list);
-LUAI_FUNC void luaK_concat (FuncState *fs, int *l1, int l2);
-LUAI_FUNC int luaK_getlabel (FuncState *fs);
-LUAI_FUNC void luaK_prefix (FuncState *fs, UnOpr op, expdesc *v, int line);
-LUAI_FUNC void luaK_infix (FuncState *fs, BinOpr op, expdesc *v);
-LUAI_FUNC void luaK_posfix (FuncState *fs, BinOpr op, expdesc *v1,
+SILI_FUNC int silK_exp2const (FuncState *fs, const expdesc *e, TValue *v);
+SILI_FUNC void silK_fixline (FuncState *fs, int line);
+SILI_FUNC void silK_nil (FuncState *fs, int from, int n);
+SILI_FUNC void silK_reserveregs (FuncState *fs, int n);
+SILI_FUNC void silK_checkstack (FuncState *fs, int n);
+SILI_FUNC void silK_int (FuncState *fs, int reg, sil_Integer n);
+SILI_FUNC void silK_dischargevars (FuncState *fs, expdesc *e);
+SILI_FUNC int silK_exp2anyreg (FuncState *fs, expdesc *e);
+SILI_FUNC void silK_exp2anyregup (FuncState *fs, expdesc *e);
+SILI_FUNC void silK_exp2nextreg (FuncState *fs, expdesc *e);
+SILI_FUNC void silK_exp2val (FuncState *fs, expdesc *e);
+SILI_FUNC void silK_self (FuncState *fs, expdesc *e, expdesc *key);
+SILI_FUNC void silK_indexed (FuncState *fs, expdesc *t, expdesc *k);
+SILI_FUNC void silK_goiftrue (FuncState *fs, expdesc *e);
+SILI_FUNC void silK_goiffalse (FuncState *fs, expdesc *e);
+SILI_FUNC void silK_storevar (FuncState *fs, expdesc *var, expdesc *e);
+SILI_FUNC void silK_setreturns (FuncState *fs, expdesc *e, int nresults);
+SILI_FUNC void silK_setoneret (FuncState *fs, expdesc *e);
+SILI_FUNC int silK_jump (FuncState *fs);
+SILI_FUNC void silK_ret (FuncState *fs, int first, int nret);
+SILI_FUNC void silK_patchlist (FuncState *fs, int list, int target);
+SILI_FUNC void silK_patchtohere (FuncState *fs, int list);
+SILI_FUNC void silK_concat (FuncState *fs, int *l1, int l2);
+SILI_FUNC int silK_getlabel (FuncState *fs);
+SILI_FUNC void silK_prefix (FuncState *fs, UnOpr op, expdesc *v, int line);
+SILI_FUNC void silK_infix (FuncState *fs, BinOpr op, expdesc *v);
+SILI_FUNC void silK_posfix (FuncState *fs, BinOpr op, expdesc *v1,
                             expdesc *v2, int line);
-LUAI_FUNC void luaK_settablesize (FuncState *fs, int pc,
+SILI_FUNC void silK_settablesize (FuncState *fs, int pc,
                                   int ra, int asize, int hsize);
-LUAI_FUNC void luaK_setlist (FuncState *fs, int base, int nelems, int tostore);
-LUAI_FUNC void luaK_finish (FuncState *fs);
-LUAI_FUNC l_noret luaK_semerror (LexState *ls, const char *fmt, ...);
+SILI_FUNC void silK_setlist (FuncState *fs, int base, int nelems, int tostore);
+SILI_FUNC void silK_finish (FuncState *fs);
+SILI_FUNC l_noret silK_semerror (LexState *ls, const char *fmt, ...);
 
 
 #endif

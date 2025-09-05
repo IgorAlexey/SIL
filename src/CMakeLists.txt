@@ -1,4 +1,4 @@
-set(LUA_CORE_SOURCES
+set(SIL_CORE_SOURCES
     lapi.c
     lcode.c
     lctype.c
@@ -21,11 +21,11 @@ set(LUA_CORE_SOURCES
     lzio.c
 )
 
-set(LUA_AUX_SOURCES
+set(SIL_AUX_SOURCES
     lauxlib.c
 )
 
-set(LUA_LIB_SOURCES
+set(SIL_LIB_SOURCES
     lbaselib.c
     ldblib.c
     liolib.c
@@ -39,13 +39,13 @@ set(LUA_LIB_SOURCES
     linit.c
 )
 
-add_library(lua STATIC
-    ${LUA_CORE_SOURCES}
-    ${LUA_AUX_SOURCES}
-    ${LUA_LIB_SOURCES}
+add_library(sil STATIC
+    ${SIL_CORE_SOURCES}
+    ${SIL_AUX_SOURCES}
+    ${SIL_LIB_SOURCES}
 )
 
-target_compile_options(lua PRIVATE
+target_compile_options(sil PRIVATE
     -Wall
     -O2
     -fno-stack-protector
@@ -73,16 +73,16 @@ target_compile_options(lua PRIVATE
 
 # GCC-specific warnings
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(lua PRIVATE
+    target_compile_options(sil PRIVATE
         -Wlogical-op
         -Wno-aggressive-loop-optimizations
     )
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_compile_definitions(lua PRIVATE LUA_USE_LINUX)
+    target_compile_definitions(sil PRIVATE SIL_USE_LINUX)
 endif()
 
 # Link math library
-target_link_libraries(lua PRIVATE m)
-set_target_properties(lua PROPERTIES OUTPUT_NAME "lua")
+target_link_libraries(sil PRIVATE m)
+set_target_properties(sil PROPERTIES OUTPUT_NAME "sil")

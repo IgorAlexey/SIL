@@ -1,11 +1,11 @@
 /*
-** $Id: luac.c $
-** Lua compiler (saves bytecodes to files; also lists bytecodes)
-** See Copyright Notice in lua.h
+** $Id: silc.c $
+** SIL compiler (saves bytecodes to files; also lists bytecodes)
+** See Copyright Notice in sil.h
 */
 
-#define luac_c
-#define LUA_CORE
+#define silc_c
+#define SIL_CORE
 
 #include "lprefix.h"
 
@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lua.h"
+#include "sil.h"
 #include "lauxlib.h"
 
 #include "lapi.h"
@@ -27,9 +27,9 @@
 #include "lundump.h"
 
 static void PrintFunction(const Proto* f, int full);
-#define luaU_print	PrintFunction
+#define silU_print	PrintFunction
 
-#define PROGNAME	"luac"		/* default program name */
+#define PROGNAME	"silc"		/* default program name */
 #define OUTPUT		PROGNAME ".out"	/* default output file */
 
 static int listing=0;			/* list bytecodes? */
@@ -116,7 +116,7 @@ static int doargs(int argc, char* argv[])
  }
  if (version)
  {
-  printf("%s\n",LUA_COPYRIGHT);
+  printf("%s\n",SIL_COPYRIGHT);
   if (version==argc-1) exit(EXIT_SUCCESS);
  }
  return i;
@@ -124,7 +124,7 @@ static int doargs(int argc, char* argv[])
 
 #define FUNCTION "(function()end)();\n"
 
-static const char* reader(lua_State* L, void* ud, size_t* size)
+static const char* reader(sil_State* L, void* ud, size_t* size)
 {
  UNUSED(L);
  if ((*(int*)ud)--)
@@ -141,7 +141,7 @@ static const char* reader(lua_State* L, void* ud, size_t* size)
 
 #define toproto(L,i) getproto(s2v(L->top.p+(i)))
 
-static const Proto* combine(lua_State* L, int n)
+static const Proto* combine(sil_State* L, int n)
 {
  if (n==1)
   return toproto(L,-1);
@@ -149,7 +149,7 @@ static const Proto* combine(lua_State* L, int n)
  {
   Proto* f;
   int i=n;
-  if (lua_load(L,reader,&i,"=(" PROGNAME ")",NULL)!=LUA_OK) fatal(lua_tostring(L,-1));
+  if (sil_load(L,reader,&i,"=(" PROGNAME ")",NULL)!=SIL_OK) fatal(sil_tostring(L,-1));
   f=toproto(L,-1);
   for (i=0; i<n; i++)
   {
@@ -160,34 +160,34 @@ static const Proto* combine(lua_State* L, int n)
  }
 }
 
-static int writer(lua_State* L, const void* p, size_t size, void* u)
+static int writer(sil_State* L, const void* p, size_t size, void* u)
 {
  UNUSED(L);
  return (fwrite(p,size,1,(FILE*)u)!=1) && (size!=0);
 }
 
-static int pmain(lua_State* L)
+static int pmain(sil_State* L)
 {
- int argc=(int)lua_tointeger(L,1);
- char** argv=(char**)lua_touserdata(L,2);
+ int argc=(int)sil_tointeger(L,1);
+ char** argv=(char**)sil_touserdata(L,2);
  const Proto* f;
  int i;
  tmname=G(L)->tmname;
- if (!lua_checkstack(L,argc)) fatal("too many input files");
+ if (!sil_checkstack(L,argc)) fatal("too many input files");
  for (i=0; i<argc; i++)
  {
   const char* filename=IS("-") ? NULL : argv[i];
-  if (luaL_loadfile(L,filename)!=LUA_OK) fatal(lua_tostring(L,-1));
+  if (silL_loadfile(L,filename)!=SIL_OK) fatal(sil_tostring(L,-1));
  }
  f=combine(L,argc);
- if (listing) luaU_print(f,listing>1);
+ if (listing) silU_print(f,listing>1);
  if (dumping)
  {
   FILE* D= (output==NULL) ? stdout : fopen(output,"wb");
   if (D==NULL) cannot("open");
-  lua_lock(L);
-  luaU_dump(L,f,writer,D,stripping);
-  lua_unlock(L);
+  sil_lock(L);
+  silU_dump(L,f,writer,D,stripping);
+  sil_unlock(L);
   if (ferror(D)) cannot("write");
   if (fclose(D)) cannot("close");
  }
@@ -196,17 +196,17 @@ static int pmain(lua_State* L)
 
 int main(int argc, char* argv[])
 {
- lua_State* L;
+ sil_State* L;
  int i=doargs(argc,argv);
  argc-=i; argv+=i;
  if (argc<=0) usage("no input files given");
- L=luaL_newstate();
+ L=silL_newstate();
  if (L==NULL) fatal("cannot create state: not enough memory");
- lua_pushcfunction(L,&pmain);
- lua_pushinteger(L,argc);
- lua_pushlightuserdata(L,argv);
- if (lua_pcall(L,2,0,0)!=LUA_OK) fatal(lua_tostring(L,-1));
- lua_close(L);
+ sil_pushcfunction(L,&pmain);
+ sil_pushinteger(L,argc);
+ sil_pushlightuserdata(L,argv);
+ if (sil_pcall(L,2,0,0)!=SIL_OK) fatal(sil_tostring(L,-1));
+ sil_close(L);
  return EXIT_SUCCESS;
 }
 
@@ -268,21 +268,21 @@ static void PrintType(const Proto* f, int i)
  const TValue* o=&f->k[i];
  switch (ttypetag(o))
  {
-  case LUA_VNIL:
+  case SIL_VNIL:
 	printf("N");
 	break;
-  case LUA_VFALSE:
-  case LUA_VTRUE:
+  case SIL_VFALSE:
+  case SIL_VTRUE:
 	printf("B");
 	break;
-  case LUA_VNUMFLT:
+  case SIL_VNUMFLT:
 	printf("F");
 	break;
-  case LUA_VNUMINT:
+  case SIL_VNUMINT:
 	printf("I");
 	break;
-  case LUA_VSHRSTR:
-  case LUA_VLNGSTR:
+  case SIL_VSHRSTR:
+  case SIL_VLNGSTR:
 	printf("S");
 	break;
   default:				/* cannot happen */
@@ -297,28 +297,28 @@ static void PrintConstant(const Proto* f, int i)
  const TValue* o=&f->k[i];
  switch (ttypetag(o))
  {
-  case LUA_VNIL:
+  case SIL_VNIL:
 	printf("nil");
 	break;
-  case LUA_VFALSE:
+  case SIL_VFALSE:
 	printf("false");
 	break;
-  case LUA_VTRUE:
+  case SIL_VTRUE:
 	printf("true");
 	break;
-  case LUA_VNUMFLT:
+  case SIL_VNUMFLT:
 	{
 	char buff[100];
-	sprintf(buff,LUA_NUMBER_FMT,fltvalue(o));
+	sprintf(buff,SIL_NUMBER_FMT,fltvalue(o));
 	printf("%s",buff);
 	if (buff[strspn(buff,"-0123456789")]=='\0') printf(".0");
 	break;
 	}
-  case LUA_VNUMINT:
-	printf(LUA_INTEGER_FMT,ivalue(o));
+  case SIL_VNUMINT:
+	printf(SIL_INTEGER_FMT,ivalue(o));
 	break;
-  case LUA_VSHRSTR:
-  case LUA_VLNGSTR:
+  case SIL_VSHRSTR:
+  case SIL_VLNGSTR:
 	PrintString(tsvalue(o));
 	break;
   default:				/* cannot happen */
@@ -349,7 +349,7 @@ static void PrintCode(const Proto* f)
   int sc=GETARG_sC(i);
   int sbx=GETARG_sBx(i);
   int isk=GETARG_k(i);
-  int line=luaG_getfuncline(f,pc);
+  int line=silG_getfuncline(f,pc);
   printf("\t%d\t",pc+1);
   if (line>0) printf("[%d]\t",line); else printf("[-]\t");
   printf("%-9s\t",opnames[o]);
@@ -671,7 +671,7 @@ static void PrintHeader(const Proto* f)
  const char* s=f->source ? getstr(f->source) : "=?";
  if (*s=='@' || *s=='=')
   s++;
- else if (*s==LUA_SIGNATURE[0])
+ else if (*s==SIL_SIGNATURE[0])
   s="(bstring)";
  else
   s="(string)";

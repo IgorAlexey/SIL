@@ -1,11 +1,11 @@
 /*
 ** $Id: ldump.c $
-** save precompiled Lua chunks
-** See Copyright Notice in lua.h
+** save precompiled SIL chunks
+** See Copyright Notice in sil.h
 */
 
 #define ldump_c
-#define LUA_CORE
+#define SIL_CORE
 
 #include "lprefix.h"
 
@@ -13,7 +13,7 @@
 #include <limits.h>
 #include <stddef.h>
 
-#include "lua.h"
+#include "sil.h"
 
 #include "lapi.h"
 #include "lgc.h"
@@ -24,14 +24,14 @@
 
 
 typedef struct {
-  lua_State *L;
-  lua_Writer writer;
+  sil_State *L;
+  sil_Writer writer;
   void *data;
   size_t offset;  /* current position relative to beginning of dump */
   int strip;
   int status;
   Table *h;  /* table to track saved strings */
-  lua_Unsigned nstr;  /* counter for counting saved strings */
+  sil_Unsigned nstr;  /* counter for counting saved strings */
 } DumpState;
 
 
@@ -51,9 +51,9 @@ typedef struct {
 */
 static void dumpBlock (DumpState *D, const void *b, size_t size) {
   if (D->status == 0) {  /* do not write anything after an error */
-    lua_unlock(D->L);
+    sil_unlock(D->L);
     D->status = (*D->writer)(D->L, b, size, D->data);
-    lua_lock(D->L);
+    sil_lock(D->L);
     D->offset += size;
   }
 }
@@ -66,11 +66,11 @@ static void dumpBlock (DumpState *D, const void *b, size_t size) {
 static void dumpAlign (DumpState *D, unsigned align) {
   unsigned padding = align - cast_uint(D->offset % align);
   if (padding < align) {  /* padding == align means no padding */
-    static lua_Integer paddingContent = 0;
-    lua_assert(align <= sizeof(lua_Integer));
+    static sil_Integer paddingContent = 0;
+    sil_assert(align <= sizeof(sil_Integer));
     dumpBlock(D, &paddingContent, padding);
   }
-  lua_assert(D->offset % align == 0);
+  sil_assert(D->offset % align == 0);
 }
 
 
@@ -87,12 +87,12 @@ static void dumpByte (DumpState *D, int y) {
 ** size for 'dumpVarint' buffer: each byte can store up to 7 bits.
 ** (The "+6" rounds up the division.)
 */
-#define DIBS    ((l_numbits(lua_Unsigned) + 6) / 7)
+#define DIBS    ((l_numbits(sil_Unsigned) + 6) / 7)
 
 /*
 ** Dumps an unsigned integer using the MSB Varint encoding
 */
-static void dumpVarint (DumpState *D, lua_Unsigned x) {
+static void dumpVarint (DumpState *D, sil_Unsigned x) {
   lu_byte buff[DIBS];
   unsigned n = 1;
   buff[DIBS - 1] = x & 0x7f;  /* fill least-significant byte */
@@ -103,17 +103,17 @@ static void dumpVarint (DumpState *D, lua_Unsigned x) {
 
 
 static void dumpSize (DumpState *D, size_t sz) {
-  dumpVarint(D, cast(lua_Unsigned, sz));
+  dumpVarint(D, cast(sil_Unsigned, sz));
 }
 
 
 static void dumpInt (DumpState *D, int x) {
-  lua_assert(x >= 0);
+  sil_assert(x >= 0);
   dumpVarint(D, cast_uint(x));
 }
 
 
-static void dumpNumber (DumpState *D, lua_Number x) {
+static void dumpNumber (DumpState *D, sil_Number x) {
   dumpVar(D, x);
 }
 
@@ -124,8 +124,8 @@ static void dumpNumber (DumpState *D, lua_Number x) {
 ** A non-negative x is coded as 2x; a negative x is coded as -2x - 1.
 ** (0 => 0; -1 => 1; 1 => 2; -2 => 3; 2 => 4; ...)
 */
-static void dumpInteger (DumpState *D, lua_Integer x) {
-  lua_Unsigned cx = (x >= 0) ? 2u * l_castS2U(x)
+static void dumpInteger (DumpState *D, sil_Integer x) {
+  sil_Unsigned cx = (x >= 0) ? 2u * l_castS2U(x)
                              : (2u * ~l_castS2U(x)) + 1;
   dumpVarint(D, cx);
 }
@@ -143,7 +143,7 @@ static void dumpString (DumpState *D, TString *ts) {
     dumpSize(D, 0);
   else {
     TValue idx;
-    int tag = luaH_getstr(D->h, ts, &idx);
+    int tag = silH_getstr(D->h, ts, &idx);
     if (!tagisempty(tag)) {  /* string already saved? */
       dumpVarint(D, 1);  /* reuse a saved string */
       dumpVarint(D, l_castS2U(ivalue(&idx)));  /* index of saved string */
@@ -157,7 +157,7 @@ static void dumpString (DumpState *D, TString *ts) {
       D->nstr++;  /* one more saved string */
       setsvalue(D->L, &key, ts);  /* the string is the key */
       setivalue(&value, l_castU2S(D->nstr));  /* its index is the value */
-      luaH_set(D->L, D->h, &key, &value);  /* h[ts] = nstr */
+      silH_set(D->L, D->h, &key, &value);  /* h[ts] = nstr */
       /* integer value does not need barrier */
     }
   }
@@ -167,7 +167,7 @@ static void dumpString (DumpState *D, TString *ts) {
 static void dumpCode (DumpState *D, const Proto *f) {
   dumpInt(D, f->sizecode);
   dumpAlign(D, sizeof(f->code[0]));
-  lua_assert(f->code != NULL);
+  sil_assert(f->code != NULL);
   dumpVector(D, f->code, cast_uint(f->sizecode));
 }
 
@@ -183,18 +183,18 @@ static void dumpConstants (DumpState *D, const Proto *f) {
     int tt = ttypetag(o);
     dumpByte(D, tt);
     switch (tt) {
-      case LUA_VNUMFLT:
+      case SIL_VNUMFLT:
         dumpNumber(D, fltvalue(o));
         break;
-      case LUA_VNUMINT:
+      case SIL_VNUMINT:
         dumpInteger(D, ivalue(o));
         break;
-      case LUA_VSHRSTR:
-      case LUA_VLNGSTR:
+      case SIL_VSHRSTR:
+      case SIL_VLNGSTR:
         dumpString(D, tsvalue(o));
         break;
       default:
-        lua_assert(tt == LUA_VNIL || tt == LUA_VFALSE || tt == LUA_VTRUE);
+        sil_assert(tt == SIL_VNIL || tt == SIL_VFALSE || tt == SIL_VTRUE);
     }
   }
 }
@@ -267,24 +267,24 @@ static void dumpFunction (DumpState *D, const Proto *f) {
 
 
 static void dumpHeader (DumpState *D) {
-  dumpLiteral(D, LUA_SIGNATURE);
-  dumpByte(D, LUAC_VERSION);
-  dumpByte(D, LUAC_FORMAT);
-  dumpLiteral(D, LUAC_DATA);
-  dumpNumInfo(D, int, LUAC_INT);
-  dumpNumInfo(D, Instruction, LUAC_INST);
-  dumpNumInfo(D, lua_Integer, LUAC_INT);
-  dumpNumInfo(D, lua_Number, LUAC_NUM);
+  dumpLiteral(D, SIL_SIGNATURE);
+  dumpByte(D, SILC_VERSION);
+  dumpByte(D, SILC_FORMAT);
+  dumpLiteral(D, SILC_DATA);
+  dumpNumInfo(D, int, SILC_INT);
+  dumpNumInfo(D, Instruction, SILC_INST);
+  dumpNumInfo(D, sil_Integer, SILC_INT);
+  dumpNumInfo(D, sil_Number, SILC_NUM);
 }
 
 
 /*
-** dump Lua function as precompiled chunk
+** dump SIL function as precompiled chunk
 */
-int luaU_dump (lua_State *L, const Proto *f, lua_Writer w, void *data,
+int silU_dump (sil_State *L, const Proto *f, sil_Writer w, void *data,
                int strip) {
   DumpState D;
-  D.h = luaH_new(L);  /* aux. table to keep strings already dumped */
+  D.h = silH_new(L);  /* aux. table to keep strings already dumped */
   sethvalue2s(L, L->top.p, D.h);  /* anchor it */
   L->top.p++;
   D.L = L;

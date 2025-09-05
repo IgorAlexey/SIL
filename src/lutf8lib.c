@@ -1,11 +1,11 @@
 /*
 ** $Id: lutf8lib.c $
 ** Standard library for UTF-8 manipulation
-** See Copyright Notice in lua.h
+** See Copyright Notice in sil.h
 */
 
 #define lutf8lib_c
-#define LUA_LIB
+#define SIL_LIB
 
 #include "lprefix.h"
 
@@ -15,10 +15,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lua.h"
+#include "sil.h"
 
 #include "lauxlib.h"
-#include "lualib.h"
+#include "sillib.h"
 #include "llimits.h"
 
 
@@ -36,10 +36,10 @@
 
 /* from strlib */
 /* translate a relative string position: negative means back from end */
-static lua_Integer u_posrelat (lua_Integer pos, size_t len) {
+static sil_Integer u_posrelat (sil_Integer pos, size_t len) {
   if (pos >= 0) return pos;
   else if (0u - (size_t)pos > len) return 0;
-  else return (lua_Integer)len + pos + 1;
+  else return (sil_Integer)len + pos + 1;
 }
 
 
@@ -85,28 +85,28 @@ static const char *utf8_decode (const char *s, l_uint32 *val, int strict) {
 ** start in the range [i,j], or nil + current position if 's' is not
 ** well formed in that interval
 */
-static int utflen (lua_State *L) {
-  lua_Integer n = 0;  /* counter for the number of characters */
+static int utflen (sil_State *L) {
+  sil_Integer n = 0;  /* counter for the number of characters */
   size_t len;  /* string length in bytes */
-  const char *s = luaL_checklstring(L, 1, &len);
-  lua_Integer posi = u_posrelat(luaL_optinteger(L, 2, 1), len);
-  lua_Integer posj = u_posrelat(luaL_optinteger(L, 3, -1), len);
-  int lax = lua_toboolean(L, 4);
-  luaL_argcheck(L, 1 <= posi && --posi <= (lua_Integer)len, 2,
+  const char *s = silL_checklstring(L, 1, &len);
+  sil_Integer posi = u_posrelat(silL_optinteger(L, 2, 1), len);
+  sil_Integer posj = u_posrelat(silL_optinteger(L, 3, -1), len);
+  int lax = sil_toboolean(L, 4);
+  silL_argcheck(L, 1 <= posi && --posi <= (sil_Integer)len, 2,
                    "initial position out of bounds");
-  luaL_argcheck(L, --posj < (lua_Integer)len, 3,
+  silL_argcheck(L, --posj < (sil_Integer)len, 3,
                    "final position out of bounds");
   while (posi <= posj) {
     const char *s1 = utf8_decode(s + posi, NULL, !lax);
     if (s1 == NULL) {  /* conversion error? */
-      luaL_pushfail(L);  /* return fail ... */
-      lua_pushinteger(L, posi + 1);  /* ... and current position */
+      silL_pushfail(L);  /* return fail ... */
+      sil_pushinteger(L, posi + 1);  /* ... and current position */
       return 2;
     }
     posi = ct_diff2S(s1 - s);
     n++;
   }
-  lua_pushinteger(L, n);
+  sil_pushinteger(L, n);
   return 1;
 }
 
@@ -115,58 +115,58 @@ static int utflen (lua_State *L) {
 ** codepoint(s, [i, [j [, lax]]]) -> returns codepoints for all
 ** characters that start in the range [i,j]
 */
-static int codepoint (lua_State *L) {
+static int codepoint (sil_State *L) {
   size_t len;
-  const char *s = luaL_checklstring(L, 1, &len);
-  lua_Integer posi = u_posrelat(luaL_optinteger(L, 2, 1), len);
-  lua_Integer pose = u_posrelat(luaL_optinteger(L, 3, posi), len);
-  int lax = lua_toboolean(L, 4);
+  const char *s = silL_checklstring(L, 1, &len);
+  sil_Integer posi = u_posrelat(silL_optinteger(L, 2, 1), len);
+  sil_Integer pose = u_posrelat(silL_optinteger(L, 3, posi), len);
+  int lax = sil_toboolean(L, 4);
   int n;
   const char *se;
-  luaL_argcheck(L, posi >= 1, 2, "out of bounds");
-  luaL_argcheck(L, pose <= (lua_Integer)len, 3, "out of bounds");
+  silL_argcheck(L, posi >= 1, 2, "out of bounds");
+  silL_argcheck(L, pose <= (sil_Integer)len, 3, "out of bounds");
   if (posi > pose) return 0;  /* empty interval; return no values */
-  if (pose - posi >= INT_MAX)  /* (lua_Integer -> int) overflow? */
-    return luaL_error(L, "string slice too long");
+  if (pose - posi >= INT_MAX)  /* (sil_Integer -> int) overflow? */
+    return silL_error(L, "string slice too long");
   n = (int)(pose -  posi) + 1;  /* upper bound for number of returns */
-  luaL_checkstack(L, n, "string slice too long");
+  silL_checkstack(L, n, "string slice too long");
   n = 0;  /* count the number of returns */
   se = s + pose;  /* string end */
   for (s += posi - 1; s < se;) {
     l_uint32 code;
     s = utf8_decode(s, &code, !lax);
     if (s == NULL)
-      return luaL_error(L, MSGInvalid);
-    lua_pushinteger(L, l_castU2S(code));
+      return silL_error(L, MSGInvalid);
+    sil_pushinteger(L, l_castU2S(code));
     n++;
   }
   return n;
 }
 
 
-static void pushutfchar (lua_State *L, int arg) {
-  lua_Unsigned code = (lua_Unsigned)luaL_checkinteger(L, arg);
-  luaL_argcheck(L, code <= MAXUTF, arg, "value out of range");
-  lua_pushfstring(L, "%U", (long)code);
+static void pushutfchar (sil_State *L, int arg) {
+  sil_Unsigned code = (sil_Unsigned)silL_checkinteger(L, arg);
+  silL_argcheck(L, code <= MAXUTF, arg, "value out of range");
+  sil_pushfstring(L, "%U", (long)code);
 }
 
 
 /*
 ** utfchar(n1, n2, ...)  -> char(n1)..char(n2)...
 */
-static int utfchar (lua_State *L) {
-  int n = lua_gettop(L);  /* number of arguments */
+static int utfchar (sil_State *L) {
+  int n = sil_gettop(L);  /* number of arguments */
   if (n == 1)  /* optimize common case of single char */
     pushutfchar(L, 1);
   else {
     int i;
-    luaL_Buffer b;
-    luaL_buffinit(L, &b);
+    silL_Buffer b;
+    silL_buffinit(L, &b);
     for (i = 1; i <= n; i++) {
       pushutfchar(L, i);
-      luaL_addvalue(&b);
+      silL_addvalue(&b);
     }
-    luaL_pushresult(&b);
+    silL_pushresult(&b);
   }
   return 1;
 }
@@ -176,13 +176,13 @@ static int utfchar (lua_State *L) {
 ** offset(s, n, [i])  -> indices where n-th character counting from
 **   position 'i' starts and ends; 0 means character at 'i'.
 */
-static int byteoffset (lua_State *L) {
+static int byteoffset (sil_State *L) {
   size_t len;
-  const char *s = luaL_checklstring(L, 1, &len);
-  lua_Integer n  = luaL_checkinteger(L, 2);
-  lua_Integer posi = (n >= 0) ? 1 : cast_st2S(len) + 1;
-  posi = u_posrelat(luaL_optinteger(L, 3, posi), len);
-  luaL_argcheck(L, 1 <= posi && --posi <= (lua_Integer)len, 3,
+  const char *s = silL_checklstring(L, 1, &len);
+  sil_Integer n  = silL_checkinteger(L, 2);
+  sil_Integer posi = (n >= 0) ? 1 : cast_st2S(len) + 1;
+  posi = u_posrelat(silL_optinteger(L, 3, posi), len);
+  silL_argcheck(L, 1 <= posi && --posi <= (sil_Integer)len, 3,
                    "position out of bounds");
   if (n == 0) {
     /* find beginning of current byte sequence */
@@ -190,7 +190,7 @@ static int byteoffset (lua_State *L) {
   }
   else {
     if (iscontp(s + posi))
-      return luaL_error(L, "initial position is a continuation byte");
+      return silL_error(L, "initial position is a continuation byte");
     if (n < 0) {
       while (n < 0 && posi > 0) {  /* move back */
         do {  /* find beginning of previous character */
@@ -201,7 +201,7 @@ static int byteoffset (lua_State *L) {
     }
     else {
       n--;  /* do not move for 1st character */
-      while (n > 0 && posi < (lua_Integer)len) {
+      while (n > 0 && posi < (sil_Integer)len) {
         do {  /* find beginning of next character */
           posi++;
         } while (iscontp(s + posi));  /* (cannot pass final '\0') */
@@ -210,25 +210,25 @@ static int byteoffset (lua_State *L) {
     }
   }
   if (n != 0) {  /* did not find given character? */
-    luaL_pushfail(L);
+    silL_pushfail(L);
     return 1;
   }
-  lua_pushinteger(L, posi + 1);  /* initial position */
+  sil_pushinteger(L, posi + 1);  /* initial position */
   if ((s[posi] & 0x80) != 0) {  /* multi-byte character? */
     do {
       posi++;
     } while (iscontp(s + posi + 1));  /* skip to final byte */
   }
   /* else one-byte character: final position is the initial one */
-  lua_pushinteger(L, posi + 1);  /* 'posi' now is the final position */
+  sil_pushinteger(L, posi + 1);  /* 'posi' now is the final position */
   return 2;
 }
 
 
-static int iter_aux (lua_State *L, int strict) {
+static int iter_aux (sil_State *L, int strict) {
   size_t len;
-  const char *s = luaL_checklstring(L, 1, &len);
-  lua_Unsigned n = (lua_Unsigned)lua_tointeger(L, 2);
+  const char *s = silL_checklstring(L, 1, &len);
+  sil_Unsigned n = (sil_Unsigned)sil_tointeger(L, 2);
   if (n < len) {
     while (iscontp(s + n)) n++;  /* go to next character */
   }
@@ -238,30 +238,30 @@ static int iter_aux (lua_State *L, int strict) {
     l_uint32 code;
     const char *next = utf8_decode(s + n, &code, strict);
     if (next == NULL || iscontp(next))
-      return luaL_error(L, MSGInvalid);
-    lua_pushinteger(L, l_castU2S(n + 1));
-    lua_pushinteger(L, l_castU2S(code));
+      return silL_error(L, MSGInvalid);
+    sil_pushinteger(L, l_castU2S(n + 1));
+    sil_pushinteger(L, l_castU2S(code));
     return 2;
   }
 }
 
 
-static int iter_auxstrict (lua_State *L) {
+static int iter_auxstrict (sil_State *L) {
   return iter_aux(L, 1);
 }
 
-static int iter_auxlax (lua_State *L) {
+static int iter_auxlax (sil_State *L) {
   return iter_aux(L, 0);
 }
 
 
-static int iter_codes (lua_State *L) {
-  int lax = lua_toboolean(L, 2);
-  const char *s = luaL_checkstring(L, 1);
-  luaL_argcheck(L, !iscontp(s), 1, MSGInvalid);
-  lua_pushcfunction(L, lax ? iter_auxlax : iter_auxstrict);
-  lua_pushvalue(L, 1);
-  lua_pushinteger(L, 0);
+static int iter_codes (sil_State *L) {
+  int lax = sil_toboolean(L, 2);
+  const char *s = silL_checkstring(L, 1);
+  silL_argcheck(L, !iscontp(s), 1, MSGInvalid);
+  sil_pushcfunction(L, lax ? iter_auxlax : iter_auxstrict);
+  sil_pushvalue(L, 1);
+  sil_pushinteger(L, 0);
   return 3;
 }
 
@@ -270,7 +270,7 @@ static int iter_codes (lua_State *L) {
 #define UTF8PATT	"[\0-\x7F\xC2-\xFD][\x80-\xBF]*"
 
 
-static const luaL_Reg funcs[] = {
+static const silL_Reg funcs[] = {
   {"offset", byteoffset},
   {"codepoint", codepoint},
   {"char", utfchar},
@@ -282,10 +282,10 @@ static const luaL_Reg funcs[] = {
 };
 
 
-LUAMOD_API int luaopen_utf8 (lua_State *L) {
-  luaL_newlib(L, funcs);
-  lua_pushlstring(L, UTF8PATT, sizeof(UTF8PATT)/sizeof(char) - 1);
-  lua_setfield(L, -2, "charpattern");
+SILMOD_API int silopen_utf8 (sil_State *L) {
+  silL_newlib(L, funcs);
+  sil_pushlstring(L, UTF8PATT, sizeof(UTF8PATT)/sizeof(char) - 1);
+  sil_setfield(L, -2, "charpattern");
   return 1;
 }
 

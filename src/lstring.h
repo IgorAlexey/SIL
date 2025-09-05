@@ -1,7 +1,7 @@
 /*
 ** $Id: lstring.h $
-** String table (keep all strings handled by Lua)
-** See Copyright Notice in lua.h
+** String table (keep all strings handled by SIL)
+** See Copyright Notice in sil.h
 */
 
 #ifndef lstring_h
@@ -25,8 +25,8 @@
 ** metamethods, as these strings must be internalized;
 ** #("function") = 8, #("__newindex") = 10.)
 */
-#if !defined(LUAI_MAXSHORTLEN)
-#define LUAI_MAXSHORTLEN	40
+#if !defined(SILI_MAXSHORTLEN)
+#define SILI_MAXSHORTLEN	40
 #endif
 
 
@@ -38,7 +38,7 @@
 	(offsetof(TString, contents) + ((l) + 1) * sizeof(char))
 
 
-#define luaS_newliteral(L, s)	(luaS_newlstr(L, "" s, \
+#define silS_newliteral(L, s)	(silS_newlstr(L, "" s, \
                                  (sizeof(s)/sizeof(char))-1))
 
 
@@ -51,23 +51,23 @@
 /*
 ** equality for short strings, which are always internalized
 */
-#define eqshrstr(a,b)	check_exp((a)->tt == LUA_VSHRSTR, (a) == (b))
+#define eqshrstr(a,b)	check_exp((a)->tt == SIL_VSHRSTR, (a) == (b))
 
 
-LUAI_FUNC unsigned luaS_hash (const char *str, size_t l, unsigned seed);
-LUAI_FUNC unsigned luaS_hashlongstr (TString *ts);
-LUAI_FUNC int luaS_eqlngstr (TString *a, TString *b);
-LUAI_FUNC void luaS_resize (lua_State *L, int newsize);
-LUAI_FUNC void luaS_clearcache (global_State *g);
-LUAI_FUNC void luaS_init (lua_State *L);
-LUAI_FUNC void luaS_remove (lua_State *L, TString *ts);
-LUAI_FUNC Udata *luaS_newudata (lua_State *L, size_t s,
+SILI_FUNC unsigned silS_hash (const char *str, size_t l, unsigned seed);
+SILI_FUNC unsigned silS_hashlongstr (TString *ts);
+SILI_FUNC int silS_eqlngstr (TString *a, TString *b);
+SILI_FUNC void silS_resize (sil_State *L, int newsize);
+SILI_FUNC void silS_clearcache (global_State *g);
+SILI_FUNC void silS_init (sil_State *L);
+SILI_FUNC void silS_remove (sil_State *L, TString *ts);
+SILI_FUNC Udata *silS_newudata (sil_State *L, size_t s,
                                               unsigned short nuvalue);
-LUAI_FUNC TString *luaS_newlstr (lua_State *L, const char *str, size_t l);
-LUAI_FUNC TString *luaS_new (lua_State *L, const char *str);
-LUAI_FUNC TString *luaS_createlngstrobj (lua_State *L, size_t l);
-LUAI_FUNC TString *luaS_newextlstr (lua_State *L,
-		const char *s, size_t len, lua_Alloc falloc, void *ud);
-LUAI_FUNC size_t luaS_sizelngstr (size_t len, int kind);
+SILI_FUNC TString *silS_newlstr (sil_State *L, const char *str, size_t l);
+SILI_FUNC TString *silS_new (sil_State *L, const char *str);
+SILI_FUNC TString *silS_createlngstrobj (sil_State *L, size_t l);
+SILI_FUNC TString *silS_newextlstr (sil_State *L,
+		const char *s, size_t len, sil_Alloc falloc, void *ud);
+SILI_FUNC size_t silS_sizelngstr (size_t len, int kind);
 
 #endif

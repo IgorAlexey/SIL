@@ -1,7 +1,7 @@
 /*
 ** $Id: ltable.h $
-** Lua tables (hash)
-** See Copyright Notice in lua.h
+** SIL tables (hash)
+** See Copyright Notice in sil.h
 */
 
 #ifndef ltable_h
@@ -46,22 +46,22 @@
 
 
 
-#define luaH_fastgeti(t,k,res,tag) \
-  { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
+#define silH_fastgeti(t,k,res,tag) \
+  { Table *h = t; sil_Unsigned u = l_castS2U(k) - 1u; \
     if ((u < h->asize)) { \
       tag = *getArrTag(h, u); \
       if (!tagisempty(tag)) { farr2val(h, u, tag, res); }} \
-    else { tag = luaH_getint(h, (k), res); }}
+    else { tag = silH_getint(h, (k), res); }}
 
 
-#define luaH_fastseti(t,k,val,hres) \
-  { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
+#define silH_fastseti(t,k,val,hres) \
+  { Table *h = t; sil_Unsigned u = l_castS2U(k) - 1u; \
     if ((u < h->asize)) { \
       lu_byte *tag = getArrTag(h, u); \
       if (checknoTM(h->metatable, TM_NEWINDEX) || !tagisempty(*tag)) \
         { fval2arr(h, u, tag, val); hres = HOK; } \
       else hres = ~cast_int(u); } \
-    else { hres = luaH_psetint(h, k, val); }}
+    else { hres = silH_psetint(h, k, val); }}
 
 
 /* results from pset */
@@ -71,12 +71,12 @@
 #define HFIRSTNODE	3
 
 /*
-** 'luaH_get*' operations set 'res', unless the value is absent, and
+** 'silH_get*' operations set 'res', unless the value is absent, and
 ** return the tag of the result.
-** The 'luaH_pset*' (pre-set) operations set the given value and return
+** The 'silH_pset*' (pre-set) operations set the given value and return
 ** HOK, unless the original value is absent. In that case, if the key
 ** is really absent, they return HNOTFOUND. Otherwise, if there is a
-** slot with that key but with no value, 'luaH_pset*' return an encoding
+** slot with that key but with no value, 'silH_pset*' return an encoding
 ** of where the key is (usually called 'hres'). (pset cannot set that
 ** value because there might be a metamethod.) If the slot is in the
 ** hash part, the encoding is (HFIRSTNODE + hash index); if the slot is
@@ -118,7 +118,7 @@
 
 /*
 ** The unsigned between the two arrays is used as a hint for #t;
-** see luaH_getn. It is stored there to avoid wasting space in
+** see silH_getn. It is stored there to avoid wasting space in
 ** the structure Table for tables with no array part.
 */
 #define lenhint(t)	cast(unsigned*, (t)->array)
@@ -146,38 +146,38 @@
   (*tag = (val)->tt_, *getArrVal(h,(k)) = (val)->value_)
 
 
-LUAI_FUNC lu_byte luaH_get (Table *t, const TValue *key, TValue *res);
-LUAI_FUNC lu_byte luaH_getshortstr (Table *t, TString *key, TValue *res);
-LUAI_FUNC lu_byte luaH_getstr (Table *t, TString *key, TValue *res);
-LUAI_FUNC lu_byte luaH_getint (Table *t, lua_Integer key, TValue *res);
+SILI_FUNC lu_byte silH_get (Table *t, const TValue *key, TValue *res);
+SILI_FUNC lu_byte silH_getshortstr (Table *t, TString *key, TValue *res);
+SILI_FUNC lu_byte silH_getstr (Table *t, TString *key, TValue *res);
+SILI_FUNC lu_byte silH_getint (Table *t, sil_Integer key, TValue *res);
 
 /* Special get for metamethods */
-LUAI_FUNC const TValue *luaH_Hgetshortstr (Table *t, TString *key);
+SILI_FUNC const TValue *silH_Hgetshortstr (Table *t, TString *key);
 
-LUAI_FUNC int luaH_psetint (Table *t, lua_Integer key, TValue *val);
-LUAI_FUNC int luaH_psetshortstr (Table *t, TString *key, TValue *val);
-LUAI_FUNC int luaH_psetstr (Table *t, TString *key, TValue *val);
-LUAI_FUNC int luaH_pset (Table *t, const TValue *key, TValue *val);
+SILI_FUNC int silH_psetint (Table *t, sil_Integer key, TValue *val);
+SILI_FUNC int silH_psetshortstr (Table *t, TString *key, TValue *val);
+SILI_FUNC int silH_psetstr (Table *t, TString *key, TValue *val);
+SILI_FUNC int silH_pset (Table *t, const TValue *key, TValue *val);
 
-LUAI_FUNC void luaH_setint (lua_State *L, Table *t, lua_Integer key,
+SILI_FUNC void silH_setint (sil_State *L, Table *t, sil_Integer key,
                                                     TValue *value);
-LUAI_FUNC void luaH_set (lua_State *L, Table *t, const TValue *key,
+SILI_FUNC void silH_set (sil_State *L, Table *t, const TValue *key,
                                                  TValue *value);
 
-LUAI_FUNC void luaH_finishset (lua_State *L, Table *t, const TValue *key,
+SILI_FUNC void silH_finishset (sil_State *L, Table *t, const TValue *key,
                                               TValue *value, int hres);
-LUAI_FUNC Table *luaH_new (lua_State *L);
-LUAI_FUNC void luaH_resize (lua_State *L, Table *t, unsigned nasize,
+SILI_FUNC Table *silH_new (sil_State *L);
+SILI_FUNC void silH_resize (sil_State *L, Table *t, unsigned nasize,
                                                     unsigned nhsize);
-LUAI_FUNC void luaH_resizearray (lua_State *L, Table *t, unsigned nasize);
-LUAI_FUNC lu_mem luaH_size (Table *t);
-LUAI_FUNC void luaH_free (lua_State *L, Table *t);
-LUAI_FUNC int luaH_next (lua_State *L, Table *t, StkId key);
-LUAI_FUNC lua_Unsigned luaH_getn (Table *t);
+SILI_FUNC void silH_resizearray (sil_State *L, Table *t, unsigned nasize);
+SILI_FUNC lu_mem silH_size (Table *t);
+SILI_FUNC void silH_free (sil_State *L, Table *t);
+SILI_FUNC int silH_next (sil_State *L, Table *t, StkId key);
+SILI_FUNC sil_Unsigned silH_getn (Table *t);
 
 
-#if defined(LUA_DEBUG)
-LUAI_FUNC Node *luaH_mainposition (const Table *t, const TValue *key);
+#if defined(SIL_DEBUG)
+SILI_FUNC Node *silH_mainposition (const Table *t, const TValue *key);
 #endif
 
 

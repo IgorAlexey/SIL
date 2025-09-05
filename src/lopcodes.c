@@ -1,11 +1,11 @@
 /*
 ** $Id: lopcodes.c $
-** Opcodes for Lua virtual machine
-** See Copyright Notice in lua.h
+** Opcodes for SIL virtual machine
+** See Copyright Notice in sil.h
 */
 
 #define lopcodes_c
-#define LUA_CORE
+#define SIL_CORE
 
 #include "lprefix.h"
 
@@ -19,7 +19,7 @@
 
 /* ORDER OP */
 
-LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
+SILI_DDEF const lu_byte silP_opmodes[NUM_OPCODES] = {
 /*       MM OT IT T  A  mode		   opcode  */
   opmode(0, 0, 0, 0, 1, iABC)		/* OP_MOVE */
  ,opmode(0, 0, 0, 0, 1, iAsBx)		/* OP_LOADI */
@@ -112,7 +112,7 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
 ** Check whether instruction sets top for next instruction, that is,
 ** it results in multiple values.
 */
-int luaP_isOT (Instruction i) {
+int silP_isOT (Instruction i) {
   OpCode op = GET_OPCODE(i);
   switch (op) {
     case OP_TAILCALL: return 1;
@@ -126,7 +126,7 @@ int luaP_isOT (Instruction i) {
 ** Check whether instruction uses top from previous instruction, that is,
 ** it accepts multiple results.
 */
-int luaP_isIT (Instruction i) {
+int silP_isIT (Instruction i) {
   OpCode op = GET_OPCODE(i);
   switch (op) {
     case OP_SETLIST:

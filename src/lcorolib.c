@@ -1,27 +1,27 @@
 /*
 ** $Id: lcorolib.c $
 ** Coroutine Library
-** See Copyright Notice in lua.h
+** See Copyright Notice in sil.h
 */
 
 #define lcorolib_c
-#define LUA_LIB
+#define SIL_LIB
 
 #include "lprefix.h"
 
 
 #include <stdlib.h>
 
-#include "lua.h"
+#include "sil.h"
 
 #include "lauxlib.h"
-#include "lualib.h"
+#include "sillib.h"
 #include "llimits.h"
 
 
-static lua_State *getco (lua_State *L) {
-  lua_State *co = lua_tothread(L, 1);
-  luaL_argexpected(L, co, 1, "thread");
+static sil_State *getco (sil_State *L) {
+  sil_State *co = sil_tothread(L, 1);
+  silL_argexpected(L, co, 1, "thread");
   return co;
 }
 
@@ -30,88 +30,88 @@ static lua_State *getco (lua_State *L) {
 ** Resumes a coroutine. Returns the number of results for non-error
 ** cases or -1 for errors.
 */
-static int auxresume (lua_State *L, lua_State *co, int narg) {
+static int auxresume (sil_State *L, sil_State *co, int narg) {
   int status, nres;
-  if (l_unlikely(!lua_checkstack(co, narg))) {
-    lua_pushliteral(L, "too many arguments to resume");
+  if (l_unlikely(!sil_checkstack(co, narg))) {
+    sil_pushliteral(L, "too many arguments to resume");
     return -1;  /* error flag */
   }
-  lua_xmove(L, co, narg);
-  status = lua_resume(co, L, narg, &nres);
-  if (l_likely(status == LUA_OK || status == LUA_YIELD)) {
-    if (l_unlikely(!lua_checkstack(L, nres + 1))) {
-      lua_pop(co, nres);  /* remove results anyway */
-      lua_pushliteral(L, "too many results to resume");
+  sil_xmove(L, co, narg);
+  status = sil_resume(co, L, narg, &nres);
+  if (l_likely(status == SIL_OK || status == SIL_YIELD)) {
+    if (l_unlikely(!sil_checkstack(L, nres + 1))) {
+      sil_pop(co, nres);  /* remove results anyway */
+      sil_pushliteral(L, "too many results to resume");
       return -1;  /* error flag */
     }
-    lua_xmove(co, L, nres);  /* move yielded values */
+    sil_xmove(co, L, nres);  /* move yielded values */
     return nres;
   }
   else {
-    lua_xmove(co, L, 1);  /* move error message */
+    sil_xmove(co, L, 1);  /* move error message */
     return -1;  /* error flag */
   }
 }
 
 
-static int luaB_coresume (lua_State *L) {
-  lua_State *co = getco(L);
+static int silB_coresume (sil_State *L) {
+  sil_State *co = getco(L);
   int r;
-  r = auxresume(L, co, lua_gettop(L) - 1);
+  r = auxresume(L, co, sil_gettop(L) - 1);
   if (l_unlikely(r < 0)) {
-    lua_pushboolean(L, 0);
-    lua_insert(L, -2);
+    sil_pushboolean(L, 0);
+    sil_insert(L, -2);
     return 2;  /* return false + error message */
   }
   else {
-    lua_pushboolean(L, 1);
-    lua_insert(L, -(r + 1));
+    sil_pushboolean(L, 1);
+    sil_insert(L, -(r + 1));
     return r + 1;  /* return true + 'resume' returns */
   }
 }
 
 
-static int luaB_auxwrap (lua_State *L) {
-  lua_State *co = lua_tothread(L, lua_upvalueindex(1));
-  int r = auxresume(L, co, lua_gettop(L));
+static int silB_auxwrap (sil_State *L) {
+  sil_State *co = sil_tothread(L, sil_upvalueindex(1));
+  int r = auxresume(L, co, sil_gettop(L));
   if (l_unlikely(r < 0)) {  /* error? */
-    int stat = lua_status(co);
-    if (stat != LUA_OK && stat != LUA_YIELD) {  /* error in the coroutine? */
-      stat = lua_closethread(co, L);  /* close its tbc variables */
-      lua_assert(stat != LUA_OK);
-      lua_xmove(co, L, 1);  /* move error message to the caller */
+    int stat = sil_status(co);
+    if (stat != SIL_OK && stat != SIL_YIELD) {  /* error in the coroutine? */
+      stat = sil_closethread(co, L);  /* close its tbc variables */
+      sil_assert(stat != SIL_OK);
+      sil_xmove(co, L, 1);  /* move error message to the caller */
     }
-    if (stat != LUA_ERRMEM &&  /* not a memory error and ... */
-        lua_type(L, -1) == LUA_TSTRING) {  /* ... error object is a string? */
-      luaL_where(L, 1);  /* add extra info, if available */
-      lua_insert(L, -2);
-      lua_concat(L, 2);
+    if (stat != SIL_ERRMEM &&  /* not a memory error and ... */
+        sil_type(L, -1) == SIL_TSTRING) {  /* ... error object is a string? */
+      silL_where(L, 1);  /* add extra info, if available */
+      sil_insert(L, -2);
+      sil_concat(L, 2);
     }
-    return lua_error(L);  /* propagate error */
+    return sil_error(L);  /* propagate error */
   }
   return r;
 }
 
 
-static int luaB_cocreate (lua_State *L) {
-  lua_State *NL;
-  luaL_checktype(L, 1, LUA_TFUNCTION);
-  NL = lua_newthread(L);
-  lua_pushvalue(L, 1);  /* move function to top */
-  lua_xmove(L, NL, 1);  /* move function from L to NL */
+static int silB_cocreate (sil_State *L) {
+  sil_State *NL;
+  silL_checktype(L, 1, SIL_TFUNCTION);
+  NL = sil_newthread(L);
+  sil_pushvalue(L, 1);  /* move function to top */
+  sil_xmove(L, NL, 1);  /* move function from L to NL */
   return 1;
 }
 
 
-static int luaB_cowrap (lua_State *L) {
-  luaB_cocreate(L);
-  lua_pushcclosure(L, luaB_auxwrap, 1);
+static int silB_cowrap (sil_State *L) {
+  silB_cocreate(L);
+  sil_pushcclosure(L, silB_auxwrap, 1);
   return 1;
 }
 
 
-static int luaB_yield (lua_State *L) {
-  return lua_yield(L, lua_gettop(L));
+static int silB_yield (sil_State *L) {
+  return sil_yield(L, sil_gettop(L));
 }
 
 
@@ -125,17 +125,17 @@ static const char *const statname[] =
   {"running", "dead", "suspended", "normal"};
 
 
-static int auxstatus (lua_State *L, lua_State *co) {
+static int auxstatus (sil_State *L, sil_State *co) {
   if (L == co) return COS_RUN;
   else {
-    switch (lua_status(co)) {
-      case LUA_YIELD:
+    switch (sil_status(co)) {
+      case SIL_YIELD:
         return COS_YIELD;
-      case LUA_OK: {
-        lua_Debug ar;
-        if (lua_getstack(co, 0, &ar))  /* does it have frames? */
+      case SIL_OK: {
+        sil_Debug ar;
+        if (sil_getstack(co, 0, &ar))  /* does it have frames? */
           return COS_NORM;  /* it is running */
-        else if (lua_gettop(co) == 0)
+        else if (sil_gettop(co) == 0)
             return COS_DEAD;
         else
           return COS_YIELD;  /* initial state */
@@ -147,77 +147,77 @@ static int auxstatus (lua_State *L, lua_State *co) {
 }
 
 
-static int luaB_costatus (lua_State *L) {
-  lua_State *co = getco(L);
-  lua_pushstring(L, statname[auxstatus(L, co)]);
+static int silB_costatus (sil_State *L) {
+  sil_State *co = getco(L);
+  sil_pushstring(L, statname[auxstatus(L, co)]);
   return 1;
 }
 
 
-static lua_State *getoptco (lua_State *L) {
-  return (lua_isnone(L, 1) ? L : getco(L));
+static sil_State *getoptco (sil_State *L) {
+  return (sil_isnone(L, 1) ? L : getco(L));
 }
 
 
-static int luaB_yieldable (lua_State *L) {
-  lua_State *co = getoptco(L);
-  lua_pushboolean(L, lua_isyieldable(co));
+static int silB_yieldable (sil_State *L) {
+  sil_State *co = getoptco(L);
+  sil_pushboolean(L, sil_isyieldable(co));
   return 1;
 }
 
 
-static int luaB_corunning (lua_State *L) {
-  int ismain = lua_pushthread(L);
-  lua_pushboolean(L, ismain);
+static int silB_corunning (sil_State *L) {
+  int ismain = sil_pushthread(L);
+  sil_pushboolean(L, ismain);
   return 2;
 }
 
 
-static int luaB_close (lua_State *L) {
-  lua_State *co = getoptco(L);
+static int silB_close (sil_State *L) {
+  sil_State *co = getoptco(L);
   int status = auxstatus(L, co);
   switch (status) {
     case COS_DEAD: case COS_YIELD: {
-      status = lua_closethread(co, L);
-      if (status == LUA_OK) {
-        lua_pushboolean(L, 1);
+      status = sil_closethread(co, L);
+      if (status == SIL_OK) {
+        sil_pushboolean(L, 1);
         return 1;
       }
       else {
-        lua_pushboolean(L, 0);
-        lua_xmove(co, L, 1);  /* move error message */
+        sil_pushboolean(L, 0);
+        sil_xmove(co, L, 1);  /* move error message */
         return 2;
       }
     }
     case COS_RUN:  /* running coroutine? */
-      lua_geti(L, LUA_REGISTRYINDEX, LUA_RIDX_MAINTHREAD);  /* get main */
-      if (lua_tothread(L, -1) == co)
-        return luaL_error(L, "cannot close main thread");
-      lua_closethread(co, L);  /* close itself */
-      lua_assert(0);  /* previous call does not return */
+      sil_geti(L, SIL_REGISTRYINDEX, SIL_RIDX_MAINTHREAD);  /* get main */
+      if (sil_tothread(L, -1) == co)
+        return silL_error(L, "cannot close main thread");
+      sil_closethread(co, L);  /* close itself */
+      sil_assert(0);  /* previous call does not return */
       return 0;
     default:  /* normal or running coroutine */
-      return luaL_error(L, "cannot close a %s coroutine", statname[status]);
+      return silL_error(L, "cannot close a %s coroutine", statname[status]);
   }
 }
 
 
-static const luaL_Reg co_funcs[] = {
-  {"create", luaB_cocreate},
-  {"resume", luaB_coresume},
-  {"running", luaB_corunning},
-  {"status", luaB_costatus},
-  {"wrap", luaB_cowrap},
-  {"yield", luaB_yield},
-  {"isyieldable", luaB_yieldable},
-  {"close", luaB_close},
+static const silL_Reg co_funcs[] = {
+  {"create", silB_cocreate},
+  {"resume", silB_coresume},
+  {"running", silB_corunning},
+  {"status", silB_costatus},
+  {"wrap", silB_cowrap},
+  {"yield", silB_yield},
+  {"isyieldable", silB_yieldable},
+  {"close", silB_close},
   {NULL, NULL}
 };
 
 
 
-LUAMOD_API int luaopen_coroutine (lua_State *L) {
-  luaL_newlib(L, co_funcs);
+SILMOD_API int silopen_coroutine (sil_State *L) {
+  silL_newlib(L, co_funcs);
   return 1;
 }
 

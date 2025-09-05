@@ -1,7 +1,7 @@
 /*
 ** $Id: ldo.h $
-** Stack and Call structure of Lua
-** See Copyright Notice in lua.h
+** Stack and Call structure of SIL
+** See Copyright Notice in sil.h
 */
 
 #ifndef ldo_h
@@ -29,16 +29,16 @@
 #else
 /* realloc stack keeping its size */
 #define condmovestack(L,pre,pos)  \
-  { int sz_ = stacksize(L); pre; luaD_reallocstack((L), sz_, 0); pos; }
+  { int sz_ = stacksize(L); pre; silD_reallocstack((L), sz_, 0); pos; }
 #endif
 
-#define luaD_checkstackaux(L,n,pre,pos)  \
+#define silD_checkstackaux(L,n,pre,pos)  \
 	if (l_unlikely(L->stack_last.p - L->top.p <= (n))) \
-	  { pre; luaD_growstack(L, n, 1); pos; } \
+	  { pre; silD_growstack(L, n, 1); pos; } \
 	else { condmovestack(L,pre,pos); }
 
 /* In general, 'pre'/'pos' are empty (nothing to save) */
-#define luaD_checkstack(L,n)	luaD_checkstackaux(L,n,(void)0,(void)0)
+#define silD_checkstack(L,n)	silD_checkstackaux(L,n,(void)0,(void)0)
 
 
 
@@ -48,7 +48,7 @@
 
 /* macro to check stack size, preserving 'p' */
 #define checkstackp(L,n,p)  \
-  luaD_checkstackaux(L, n, \
+  silD_checkstackaux(L, n, \
     ptrdiff_t t__ = savestack(L, p),  /* save 'p' */ \
     p = restorestack(L, t__))  /* 'pos' part: restore 'p' */
 
@@ -59,40 +59,40 @@
 ** fit in a 16-bit unsigned integer. It must also be compatible with
 ** the size of the C stack.)
 */
-#if !defined(LUAI_MAXCCALLS)
-#define LUAI_MAXCCALLS		200
+#if !defined(SILI_MAXCCALLS)
+#define SILI_MAXCCALLS		200
 #endif
 
 
 /* type of protected functions, to be ran by 'runprotected' */
-typedef void (*Pfunc) (lua_State *L, void *ud);
+typedef void (*Pfunc) (sil_State *L, void *ud);
 
-LUAI_FUNC l_noret luaD_errerr (lua_State *L);
-LUAI_FUNC void luaD_seterrorobj (lua_State *L, TStatus errcode, StkId oldtop);
-LUAI_FUNC TStatus luaD_protectedparser (lua_State *L, ZIO *z,
+SILI_FUNC l_noret silD_errerr (sil_State *L);
+SILI_FUNC void silD_seterrorobj (sil_State *L, TStatus errcode, StkId oldtop);
+SILI_FUNC TStatus silD_protectedparser (sil_State *L, ZIO *z,
                                                   const char *name,
                                                   const char *mode);
-LUAI_FUNC void luaD_hook (lua_State *L, int event, int line,
+SILI_FUNC void silD_hook (sil_State *L, int event, int line,
                                         int fTransfer, int nTransfer);
-LUAI_FUNC void luaD_hookcall (lua_State *L, CallInfo *ci);
-LUAI_FUNC int luaD_pretailcall (lua_State *L, CallInfo *ci, StkId func,
+SILI_FUNC void silD_hookcall (sil_State *L, CallInfo *ci);
+SILI_FUNC int silD_pretailcall (sil_State *L, CallInfo *ci, StkId func,
                                               int narg1, int delta);
-LUAI_FUNC CallInfo *luaD_precall (lua_State *L, StkId func, int nResults);
-LUAI_FUNC void luaD_call (lua_State *L, StkId func, int nResults);
-LUAI_FUNC void luaD_callnoyield (lua_State *L, StkId func, int nResults);
-LUAI_FUNC TStatus luaD_closeprotected (lua_State *L, ptrdiff_t level,
+SILI_FUNC CallInfo *silD_precall (sil_State *L, StkId func, int nResults);
+SILI_FUNC void silD_call (sil_State *L, StkId func, int nResults);
+SILI_FUNC void silD_callnoyield (sil_State *L, StkId func, int nResults);
+SILI_FUNC TStatus silD_closeprotected (sil_State *L, ptrdiff_t level,
                                                      TStatus status);
-LUAI_FUNC TStatus luaD_pcall (lua_State *L, Pfunc func, void *u,
+SILI_FUNC TStatus silD_pcall (sil_State *L, Pfunc func, void *u,
                                         ptrdiff_t oldtop, ptrdiff_t ef);
-LUAI_FUNC void luaD_poscall (lua_State *L, CallInfo *ci, int nres);
-LUAI_FUNC int luaD_reallocstack (lua_State *L, int newsize, int raiseerror);
-LUAI_FUNC int luaD_growstack (lua_State *L, int n, int raiseerror);
-LUAI_FUNC void luaD_shrinkstack (lua_State *L);
-LUAI_FUNC void luaD_inctop (lua_State *L);
+SILI_FUNC void silD_poscall (sil_State *L, CallInfo *ci, int nres);
+SILI_FUNC int silD_reallocstack (sil_State *L, int newsize, int raiseerror);
+SILI_FUNC int silD_growstack (sil_State *L, int n, int raiseerror);
+SILI_FUNC void silD_shrinkstack (sil_State *L);
+SILI_FUNC void silD_inctop (sil_State *L);
 
-LUAI_FUNC l_noret luaD_throw (lua_State *L, TStatus errcode);
-LUAI_FUNC l_noret luaD_throwbaselevel (lua_State *L, TStatus errcode);
-LUAI_FUNC TStatus luaD_rawrunprotected (lua_State *L, Pfunc f, void *ud);
+SILI_FUNC l_noret silD_throw (sil_State *L, TStatus errcode);
+SILI_FUNC l_noret silD_throwbaselevel (sil_State *L, TStatus errcode);
+SILI_FUNC TStatus silD_rawrunprotected (sil_State *L, Pfunc f, void *ud);
 
 #endif
 

@@ -1,13 +1,13 @@
 /*
 ** $Id: lstate.h $
 ** Global State
-** See Copyright Notice in lua.h
+** See Copyright Notice in sil.h
 */
 
 #ifndef lstate_h
 #define lstate_h
 
-#include "lua.h"
+#include "sil.h"
 
 
 /* Some header files included here need this definition */
@@ -20,7 +20,7 @@ typedef struct CallInfo CallInfo;
 
 
 /*
-** Some notes about garbage-collected objects: All objects in Lua must
+** Some notes about garbage-collected objects: All objects in SIL must
 ** be kept somehow accessible until being freed, so all objects always
 ** belong to one (and only one) of these lists, using field 'next' of
 ** the 'CommonHeader' for the link:
@@ -46,7 +46,7 @@ typedef struct CallInfo CallInfo;
 ** 'finobjrold' -> NULL: really old       """".
 **
 ** All lists can contain elements older than their main ages, due
-** to 'luaC_checkfinalizer' and 'udata2finalize', which move
+** to 'silC_checkfinalizer' and 'udata2finalize', which move
 ** objects between the normal lists and the "marked for finalization"
 ** lists. Moreover, barriers can age young objects in young lists as
 ** OLD0, which then become OLD1. However, a list never contains
@@ -119,11 +119,11 @@ typedef struct CallInfo CallInfo;
 
 
 
-struct lua_longjmp;  /* defined in ldo.c */
+struct sil_longjmp;  /* defined in ldo.c */
 
 
 /*
-** Atomic type (relative to signals) to better ensure that 'lua_sethook'
+** Atomic type (relative to signals) to better ensure that 'sil_sethook'
 ** is thread safe
 */
 #if !defined(l_signalT)
@@ -153,7 +153,7 @@ struct lua_longjmp;  /* defined in ldo.c */
 #endif
 
 
-#define BASIC_STACK_SIZE        (2*LUA_MINSTACK)
+#define BASIC_STACK_SIZE        (2*SIL_MINSTACK)
 
 #define stacksize(th)	cast_int((th)->stack_last.p - (th)->stack.p)
 
@@ -174,7 +174,7 @@ typedef struct stringtable {
 /*
 ** Information about a call.
 ** About union 'u':
-** - field 'l' is used only for Lua functions;
+** - field 'l' is used only for SIL functions;
 ** - field 'c' is used only for C functions.
 ** About union 'u2':
 ** - field 'funcidx' is used only by C functions while doing a
@@ -189,15 +189,15 @@ struct CallInfo {
   StkIdRel top;  /* top for this function */
   struct CallInfo *previous, *next;  /* dynamic call link */
   union {
-    struct {  /* only for Lua functions */
+    struct {  /* only for SIL functions */
       const Instruction *savedpc;
       volatile l_signalT trap;  /* function is tracing lines/counts */
       int nextraargs;  /* # of extra arguments in vararg functions */
     } l;
     struct {  /* only for C functions */
-      lua_KFunction k;  /* continuation in case of yields */
+      sil_KFunction k;  /* continuation in case of yields */
       ptrdiff_t old_errfunc;
-      lua_KContext ctx;  /* context info. in case of yields */
+      sil_KContext ctx;  /* context info. in case of yields */
     } c;
   } u;
   union {
@@ -231,7 +231,7 @@ struct CallInfo {
 
 /* call is running a C function (still in first 16 bits) */
 #define CIST_C		(1u << (CIST_RECST + 3))
-/* call is on a fresh "luaV_execute" frame */
+/* call is on a fresh "silV_execute" frame */
 #define CIST_FRESH	cast(l_uint32, CIST_C << 1)
 /* function is closing tbc variables */
 #define CIST_CLSRET	(CIST_FRESH << 1)
@@ -249,7 +249,7 @@ struct CallInfo {
 #define CIST_HOOKYIELD	(CIST_TAIL << 1)
 /* function "called" a finalizer */
 #define CIST_FIN	(CIST_HOOKYIELD << 1)
-#if defined(LUA_COMPAT_LT_LE)
+#if defined(SIL_COMPAT_LT_LE)
 /* using __lt for __le */
 #define CIST_LEQ	(CIST_FIN << 1)
 #endif
@@ -260,7 +260,7 @@ struct CallInfo {
 /*
 ** Field CIST_RECST stores the "recover status", used to keep the error
 ** status while closing to-be-closed variables in coroutines, so that
-** Lua can correctly resume after an yield from a __close method called
+** SIL can correctly resume after an yield from a __close method called
 ** because of an error.  (Three bits are enough for error status.)
 */
 #define getcistrecst(ci)     (((ci)->callstatus >> CIST_RECST) & 7)
@@ -270,11 +270,11 @@ struct CallInfo {
                                 | (cast(l_uint32, st) << CIST_RECST)))
 
 
-/* active function is a Lua function */
-#define isLua(ci)	(!((ci)->callstatus & CIST_C))
+/* active function is a SIL function */
+#define isSil(ci)	(!((ci)->callstatus & CIST_C))
 
-/* call is running Lua code (not a hook) */
-#define isLuacode(ci)	(!((ci)->callstatus & (CIST_C | CIST_HOOKED)))
+/* call is running SIL code (not a hook) */
+#define isSilcode(ci)	(!((ci)->callstatus & (CIST_C | CIST_HOOKED)))
 
 
 #define setoah(ci,v)  \
@@ -286,7 +286,7 @@ struct CallInfo {
 /*
 ** 'per thread' state
 */
-struct lua_State {
+struct sil_State {
   CommonHeader;
   lu_byte allowhook;
   TStatus status;
@@ -298,10 +298,10 @@ struct lua_State {
   UpVal *openupval;  /* list of open upvalues in this stack */
   StkIdRel tbclist;  /* list of to-be-closed variables */
   GCObject *gclist;
-  struct lua_State *twups;  /* list of threads with open upvalues */
-  struct lua_longjmp *errorJmp;  /* current error recover point */
+  struct sil_State *twups;  /* list of threads with open upvalues */
+  struct sil_longjmp *errorJmp;  /* current error recover point */
   CallInfo base_ci;  /* CallInfo for first level (C host) */
-  volatile lua_Hook hook;
+  volatile sil_Hook hook;
   ptrdiff_t errfunc;  /* current error handling function (stack index) */
   l_uint32 nCcalls;  /* number of nested non-yieldable or C calls */
   int oldpc;  /* last pc traced */
@@ -320,8 +320,8 @@ struct lua_State {
 ** thread state + extra space
 */
 typedef struct LX {
-  lu_byte extra_[LUA_EXTRASPACE];
-  lua_State l;
+  lu_byte extra_[SIL_EXTRASPACE];
+  sil_State l;
 } LX;
 
 
@@ -329,7 +329,7 @@ typedef struct LX {
 ** 'global state', shared by all threads of this state
 */
 typedef struct global_State {
-  lua_Alloc frealloc;  /* function to reallocate memory */
+  sil_Alloc frealloc;  /* function to reallocate memory */
   void *ud;         /* auxiliary data to 'frealloc' */
   l_mem GCtotalbytes;  /* number of bytes currently allocated + debt */
   l_mem GCdebt;  /* bytes counted but not yet allocated */
@@ -339,7 +339,7 @@ typedef struct global_State {
   TValue l_registry;
   TValue nilvalue;  /* a nil value */
   unsigned int seed;  /* randomized seed for hashes */
-  lu_byte gcparams[LUA_GCPN];
+  lu_byte gcparams[SIL_GCPN];
   lu_byte currentwhite;
   lu_byte gcstate;  /* state of garbage collector */
   lu_byte gckind;  /* kind of GC running */
@@ -364,13 +364,13 @@ typedef struct global_State {
   GCObject *finobjsur;  /* list of survival objects with finalizers */
   GCObject *finobjold1;  /* list of old1 objects with finalizers */
   GCObject *finobjrold;  /* list of really old objects with finalizers */
-  struct lua_State *twups;  /* list of threads with open upvalues */
-  lua_CFunction panic;  /* to be called in unprotected errors */
+  struct sil_State *twups;  /* list of threads with open upvalues */
+  sil_CFunction panic;  /* to be called in unprotected errors */
   TString *memerrmsg;  /* message for memory-allocation errors */
   TString *tmname[TM_N];  /* array with tag-method names */
-  struct Table *mt[LUA_NUMTYPES];  /* metatables for basic types */
+  struct Table *mt[SIL_NUMTYPES];  /* metatables for basic types */
   TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
-  lua_WarnFunction warnf;  /* warning function */
+  sil_WarnFunction warnf;  /* warning function */
   void *ud_warn;         /* auxiliary data to 'warnf' */
   LX mainth;  /* main thread of this state */
 } global_State;
@@ -402,7 +402,7 @@ union GCUnion {
   union Closure cl;
   struct Table h;
   struct Proto p;
-  struct lua_State th;  /* thread */
+  struct sil_State th;  /* thread */
   struct UpVal upv;
 };
 
@@ -416,39 +416,39 @@ union GCUnion {
 
 /* macros to convert a GCObject into a specific value */
 #define gco2ts(o)  \
-	check_exp(novariant((o)->tt) == LUA_TSTRING, &((cast_u(o))->ts))
-#define gco2u(o)  check_exp((o)->tt == LUA_VUSERDATA, &((cast_u(o))->u))
-#define gco2lcl(o)  check_exp((o)->tt == LUA_VLCL, &((cast_u(o))->cl.l))
-#define gco2ccl(o)  check_exp((o)->tt == LUA_VCCL, &((cast_u(o))->cl.c))
+	check_exp(novariant((o)->tt) == SIL_TSTRING, &((cast_u(o))->ts))
+#define gco2u(o)  check_exp((o)->tt == SIL_VUSERDATA, &((cast_u(o))->u))
+#define gco2lcl(o)  check_exp((o)->tt == SIL_VLCL, &((cast_u(o))->cl.l))
+#define gco2ccl(o)  check_exp((o)->tt == SIL_VCCL, &((cast_u(o))->cl.c))
 #define gco2cl(o)  \
-	check_exp(novariant((o)->tt) == LUA_TFUNCTION, &((cast_u(o))->cl))
-#define gco2t(o)  check_exp((o)->tt == LUA_VTABLE, &((cast_u(o))->h))
-#define gco2p(o)  check_exp((o)->tt == LUA_VPROTO, &((cast_u(o))->p))
-#define gco2th(o)  check_exp((o)->tt == LUA_VTHREAD, &((cast_u(o))->th))
-#define gco2upv(o)	check_exp((o)->tt == LUA_VUPVAL, &((cast_u(o))->upv))
+	check_exp(novariant((o)->tt) == SIL_TFUNCTION, &((cast_u(o))->cl))
+#define gco2t(o)  check_exp((o)->tt == SIL_VTABLE, &((cast_u(o))->h))
+#define gco2p(o)  check_exp((o)->tt == SIL_VPROTO, &((cast_u(o))->p))
+#define gco2th(o)  check_exp((o)->tt == SIL_VTHREAD, &((cast_u(o))->th))
+#define gco2upv(o)	check_exp((o)->tt == SIL_VUPVAL, &((cast_u(o))->upv))
 
 
 /*
-** macro to convert a Lua object into a GCObject
-** (The access to 'tt' tries to ensure that 'v' is actually a Lua object.)
+** macro to convert a SIL object into a GCObject
+** (The access to 'tt' tries to ensure that 'v' is actually a SIL object.)
 */
-#define obj2gco(v)	check_exp((v)->tt >= LUA_TSTRING, &(cast_u(v)->gc))
+#define obj2gco(v)	check_exp((v)->tt >= SIL_TSTRING, &(cast_u(v)->gc))
 
 
 /* actual number of total memory allocated */
 #define gettotalbytes(g)	((g)->GCtotalbytes - (g)->GCdebt)
 
 
-LUAI_FUNC void luaE_setdebt (global_State *g, l_mem debt);
-LUAI_FUNC void luaE_freethread (lua_State *L, lua_State *L1);
-LUAI_FUNC lu_mem luaE_threadsize (lua_State *L);
-LUAI_FUNC CallInfo *luaE_extendCI (lua_State *L);
-LUAI_FUNC void luaE_shrinkCI (lua_State *L);
-LUAI_FUNC void luaE_checkcstack (lua_State *L);
-LUAI_FUNC void luaE_incCstack (lua_State *L);
-LUAI_FUNC void luaE_warning (lua_State *L, const char *msg, int tocont);
-LUAI_FUNC void luaE_warnerror (lua_State *L, const char *where);
-LUAI_FUNC TStatus luaE_resetthread (lua_State *L, TStatus status);
+SILI_FUNC void silE_setdebt (global_State *g, l_mem debt);
+SILI_FUNC void silE_freethread (sil_State *L, sil_State *L1);
+SILI_FUNC lu_mem silE_threadsize (sil_State *L);
+SILI_FUNC CallInfo *silE_extendCI (sil_State *L);
+SILI_FUNC void silE_shrinkCI (sil_State *L);
+SILI_FUNC void silE_checkcstack (sil_State *L);
+SILI_FUNC void silE_incCstack (sil_State *L);
+SILI_FUNC void silE_warning (sil_State *L, const char *msg, int tocont);
+SILI_FUNC void silE_warnerror (sil_State *L, const char *where);
+SILI_FUNC TStatus silE_resetthread (sil_State *L, TStatus status);
 
 
 #endif

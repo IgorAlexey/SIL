@@ -1,18 +1,18 @@
 /*
 ** $Id: lstring.c $
-** String table (keeps all strings handled by Lua)
-** See Copyright Notice in lua.h
+** String table (keeps all strings handled by SIL)
+** See Copyright Notice in sil.h
 */
 
 #define lstring_c
-#define LUA_CORE
+#define SIL_CORE
 
 #include "lprefix.h"
 
 
 #include <string.h>
 
-#include "lua.h"
+#include "sil.h"
 
 #include "ldebug.h"
 #include "ldo.h"
@@ -25,11 +25,11 @@
 /*
 ** Maximum size for string table.
 */
-#define MAXSTRTB	cast_int(luaM_limitN(INT_MAX, TString*))
+#define MAXSTRTB	cast_int(silM_limitN(INT_MAX, TString*))
 
 /*
 ** Initial size for the string table (must be power of 2).
-** The Lua core alone registers ~50 strings (reserved words +
+** The SIL core alone registers ~50 strings (reserved words +
 ** metaevent keys + a few others). Libraries would typically add
 ** a few dozens more.
 */
@@ -41,16 +41,16 @@
 /*
 ** equality for long strings
 */
-int luaS_eqlngstr (TString *a, TString *b) {
+int silS_eqlngstr (TString *a, TString *b) {
   size_t len = a->u.lnglen;
-  lua_assert(a->tt == LUA_VLNGSTR && b->tt == LUA_VLNGSTR);
+  sil_assert(a->tt == SIL_VLNGSTR && b->tt == SIL_VLNGSTR);
   return (a == b) ||  /* same instance or... */
     ((len == b->u.lnglen) &&  /* equal length and ... */
      (memcmp(getlngstr(a), getlngstr(b), len) == 0));  /* equal contents */
 }
 
 
-unsigned luaS_hash (const char *str, size_t l, unsigned seed) {
+unsigned silS_hash (const char *str, size_t l, unsigned seed) {
   unsigned int h = seed ^ cast_uint(l);
   for (; l > 0; l--)
     h ^= ((h<<5) + (h>>2) + cast_byte(str[l - 1]));
@@ -58,11 +58,11 @@ unsigned luaS_hash (const char *str, size_t l, unsigned seed) {
 }
 
 
-unsigned luaS_hashlongstr (TString *ts) {
-  lua_assert(ts->tt == LUA_VLNGSTR);
+unsigned silS_hashlongstr (TString *ts) {
+  sil_assert(ts->tt == SIL_VLNGSTR);
   if (ts->extra == 0) {  /* no hash? */
     size_t len = ts->u.lnglen;
-    ts->hash = luaS_hash(getlngstr(ts), len, ts->hash);
+    ts->hash = silS_hash(getlngstr(ts), len, ts->hash);
     ts->extra = 1;  /* now it has its hash */
   }
   return ts->hash;
@@ -92,13 +92,13 @@ static void tablerehash (TString **vect, int osize, int nsize) {
 ** (This can degrade performance, but any non-zero size should work
 ** correctly.)
 */
-void luaS_resize (lua_State *L, int nsize) {
+void silS_resize (sil_State *L, int nsize) {
   stringtable *tb = &G(L)->strt;
   int osize = tb->size;
   TString **newvect;
   if (nsize < osize)  /* shrinking table? */
     tablerehash(tb->hash, osize, nsize);  /* depopulate shrinking part */
-  newvect = luaM_reallocvector(L, tb->hash, osize, nsize, TString*);
+  newvect = silM_reallocvector(L, tb->hash, osize, nsize, TString*);
   if (l_unlikely(newvect == NULL)) {  /* reallocation failed? */
     if (nsize < osize)  /* was it shrinking table? */
       tablerehash(tb->hash, nsize, osize);  /* restore to original size */
@@ -117,7 +117,7 @@ void luaS_resize (lua_State *L, int nsize) {
 ** Clear API string cache. (Entries cannot be empty, so fill them with
 ** a non-collectable string.)
 */
-void luaS_clearcache (global_State *g) {
+void silS_clearcache (global_State *g) {
   int i, j;
   for (i = 0; i < STRCACHE_N; i++)
     for (j = 0; j < STRCACHE_M; j++) {
@@ -130,23 +130,23 @@ void luaS_clearcache (global_State *g) {
 /*
 ** Initialize the string table and the string cache
 */
-void luaS_init (lua_State *L) {
+void silS_init (sil_State *L) {
   global_State *g = G(L);
   int i, j;
   stringtable *tb = &G(L)->strt;
-  tb->hash = luaM_newvector(L, MINSTRTABSIZE, TString*);
+  tb->hash = silM_newvector(L, MINSTRTABSIZE, TString*);
   tablerehash(tb->hash, 0, MINSTRTABSIZE);  /* clear array */
   tb->size = MINSTRTABSIZE;
   /* pre-create memory-error message */
-  g->memerrmsg = luaS_newliteral(L, MEMERRMSG);
-  luaC_fix(L, obj2gco(g->memerrmsg));  /* it should never be collected */
+  g->memerrmsg = silS_newliteral(L, MEMERRMSG);
+  silC_fix(L, obj2gco(g->memerrmsg));  /* it should never be collected */
   for (i = 0; i < STRCACHE_N; i++)  /* fill cache with valid strings */
     for (j = 0; j < STRCACHE_M; j++)
       g->strcache[i][j] = g->memerrmsg;
 }
 
 
-size_t luaS_sizelngstr (size_t len, int kind) {
+size_t silS_sizelngstr (size_t len, int kind) {
   switch (kind) {
     case LSTRREG:  /* regular long string */
       /* don't need 'falloc'/'ud', but need space for content */
@@ -155,7 +155,7 @@ size_t luaS_sizelngstr (size_t len, int kind) {
       /* don't need 'falloc'/'ud' */
       return offsetof(TString, falloc);
     default:  /* external long string with deallocation */
-      lua_assert(kind == LSTRMEM);
+      sil_assert(kind == LSTRMEM);
       return sizeof(TString);
   }
 }
@@ -164,11 +164,11 @@ size_t luaS_sizelngstr (size_t len, int kind) {
 /*
 ** creates a new string object
 */
-static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
+static TString *createstrobj (sil_State *L, size_t totalsize, lu_byte tag,
                               unsigned h) {
   TString *ts;
   GCObject *o;
-  o = luaC_newobj(L, tag, totalsize);
+  o = silC_newobj(L, tag, totalsize);
   ts = gco2ts(o);
   ts->hash = h;
   ts->extra = 0;
@@ -176,9 +176,9 @@ static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
 }
 
 
-TString *luaS_createlngstrobj (lua_State *L, size_t l) {
-  size_t totalsize = luaS_sizelngstr(l, LSTRREG);
-  TString *ts = createstrobj(L, totalsize, LUA_VLNGSTR, G(L)->seed);
+TString *silS_createlngstrobj (sil_State *L, size_t l) {
+  size_t totalsize = silS_sizelngstr(l, LSTRREG);
+  TString *ts = createstrobj(L, totalsize, SIL_VLNGSTR, G(L)->seed);
   ts->u.lnglen = l;
   ts->shrlen = LSTRREG;  /* signals that it is a regular long string */
   ts->contents = cast_charp(ts) + offsetof(TString, falloc);
@@ -187,7 +187,7 @@ TString *luaS_createlngstrobj (lua_State *L, size_t l) {
 }
 
 
-void luaS_remove (lua_State *L, TString *ts) {
+void silS_remove (sil_State *L, TString *ts) {
   stringtable *tb = &G(L)->strt;
   TString **p = &tb->hash[lmod(ts->hash, tb->size)];
   while (*p != ts)  /* find previous element */
@@ -197,27 +197,27 @@ void luaS_remove (lua_State *L, TString *ts) {
 }
 
 
-static void growstrtab (lua_State *L, stringtable *tb) {
+static void growstrtab (sil_State *L, stringtable *tb) {
   if (l_unlikely(tb->nuse == INT_MAX)) {  /* too many strings? */
-    luaC_fullgc(L, 1);  /* try to free some... */
+    silC_fullgc(L, 1);  /* try to free some... */
     if (tb->nuse == INT_MAX)  /* still too many? */
-      luaM_error(L);  /* cannot even create a message... */
+      silM_error(L);  /* cannot even create a message... */
   }
   if (tb->size <= MAXSTRTB / 2)  /* can grow string table? */
-    luaS_resize(L, tb->size * 2);
+    silS_resize(L, tb->size * 2);
 }
 
 
 /*
 ** Checks whether short string exists and reuses it or creates a new one.
 */
-static TString *internshrstr (lua_State *L, const char *str, size_t l) {
+static TString *internshrstr (sil_State *L, const char *str, size_t l) {
   TString *ts;
   global_State *g = G(L);
   stringtable *tb = &g->strt;
-  unsigned int h = luaS_hash(str, l, g->seed);
+  unsigned int h = silS_hash(str, l, g->seed);
   TString **list = &tb->hash[lmod(h, tb->size)];
-  lua_assert(str != NULL);  /* otherwise 'memcmp'/'memcpy' are undefined */
+  sil_assert(str != NULL);  /* otherwise 'memcmp'/'memcpy' are undefined */
   for (ts = *list; ts != NULL; ts = ts->u.hnext) {
     if (l == cast_uint(ts->shrlen) &&
         (memcmp(str, getshrstr(ts), l * sizeof(char)) == 0)) {
@@ -232,7 +232,7 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
     growstrtab(L, tb);
     list = &tb->hash[lmod(h, tb->size)];  /* rehash with new size */
   }
-  ts = createstrobj(L, sizestrshr(l), LUA_VSHRSTR, h);
+  ts = createstrobj(L, sizestrshr(l), SIL_VSHRSTR, h);
   ts->shrlen = cast(ls_byte, l);
   getshrstr(ts)[l] = '\0';  /* ending 0 */
   memcpy(getshrstr(ts), str, l * sizeof(char));
@@ -246,14 +246,14 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
 /*
 ** new string (with explicit length)
 */
-TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
-  if (l <= LUAI_MAXSHORTLEN)  /* short string? */
+TString *silS_newlstr (sil_State *L, const char *str, size_t l) {
+  if (l <= SILI_MAXSHORTLEN)  /* short string? */
     return internshrstr(L, str, l);
   else {
     TString *ts;
     if (l_unlikely(l * sizeof(char) >= (MAX_SIZE - sizeof(TString))))
-      luaM_toobig(L);
-    ts = luaS_createlngstrobj(L, l);
+      silM_toobig(L);
+    ts = silS_createlngstrobj(L, l);
     memcpy(getlngstr(ts), str, l * sizeof(char));
     return ts;
   }
@@ -266,7 +266,7 @@ TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
 ** only zero-terminated strings, so it is safe to use 'strcmp' to
 ** check hits.
 */
-TString *luaS_new (lua_State *L, const char *str) {
+TString *silS_new (sil_State *L, const char *str) {
   unsigned int i = point2uint(str) % STRCACHE_N;  /* hash */
   int j;
   TString **p = G(L)->strcache[i];
@@ -278,18 +278,18 @@ TString *luaS_new (lua_State *L, const char *str) {
   for (j = STRCACHE_M - 1; j > 0; j--)
     p[j] = p[j - 1];  /* move out last element */
   /* new element is first in the list */
-  p[0] = luaS_newlstr(L, str, strlen(str));
+  p[0] = silS_newlstr(L, str, strlen(str));
   return p[0];
 }
 
 
-Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
+Udata *silS_newudata (sil_State *L, size_t s, unsigned short nuvalue) {
   Udata *u;
   int i;
   GCObject *o;
   if (l_unlikely(s > MAX_SIZE - udatamemoffset(nuvalue)))
-    luaM_toobig(L);
-  o = luaC_newobj(L, LUA_VUSERDATA, sizeudata(nuvalue, s));
+    silM_toobig(L);
+  o = silC_newobj(L, SIL_VUSERDATA, sizeudata(nuvalue, s));
   u = gco2u(o);
   u->len = s;
   u->nuvalue = nuvalue;
@@ -308,31 +308,31 @@ struct NewExt {
 };
 
 
-static void f_newext (lua_State *L, void *ud) {
+static void f_newext (sil_State *L, void *ud) {
   struct NewExt *ne = cast(struct NewExt *, ud);
-  size_t size = luaS_sizelngstr(0, ne->kind);
-  ne->ts = createstrobj(L, size, LUA_VLNGSTR, G(L)->seed);
+  size_t size = silS_sizelngstr(0, ne->kind);
+  ne->ts = createstrobj(L, size, SIL_VLNGSTR, G(L)->seed);
 }
 
 
-static void f_pintern (lua_State *L, void *ud) {
+static void f_pintern (sil_State *L, void *ud) {
   struct NewExt *ne = cast(struct NewExt *, ud);
   ne->ts = internshrstr(L, ne->s, ne->len);
 }
 
 
-TString *luaS_newextlstr (lua_State *L,
-	          const char *s, size_t len, lua_Alloc falloc, void *ud) {
+TString *silS_newextlstr (sil_State *L,
+	          const char *s, size_t len, sil_Alloc falloc, void *ud) {
   struct NewExt ne;
-  if (len <= LUAI_MAXSHORTLEN) {  /* short string? */
+  if (len <= SILI_MAXSHORTLEN) {  /* short string? */
     ne.s = s; ne.len = len;
     if (!falloc)
       f_pintern(L, &ne);  /* just internalize string */
     else {
-      TStatus status = luaD_rawrunprotected(L, f_pintern, &ne);
+      TStatus status = silD_rawrunprotected(L, f_pintern, &ne);
       (*falloc)(ud, cast_voidp(s), len + 1, 0);  /* free external string */
-      if (status != LUA_OK)  /* memory error? */
-        luaM_error(L);  /* re-raise memory error */
+      if (status != SIL_OK)  /* memory error? */
+        silM_error(L);  /* re-raise memory error */
     }
     return ne.ts;
   }
@@ -343,9 +343,9 @@ TString *luaS_newextlstr (lua_State *L,
   }
   else {
     ne.kind = LSTRMEM;
-    if (luaD_rawrunprotected(L, f_newext, &ne) != LUA_OK) {  /* mem. error? */
+    if (silD_rawrunprotected(L, f_newext, &ne) != SIL_OK) {  /* mem. error? */
       (*falloc)(ud, cast_voidp(s), len + 1, 0);  /* free external string */
-      luaM_error(L);  /* re-raise memory error */
+      silM_error(L);  /* re-raise memory error */
     }
     ne.ts->falloc = falloc;
     ne.ts->ud = ud;

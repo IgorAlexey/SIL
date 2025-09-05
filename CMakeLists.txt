@@ -1,28 +1,28 @@
 cmake_minimum_required(VERSION 3.27)
-project(lua VERSION 5.5.0 LANGUAGES C)
+project(sil VERSION 1.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 add_subdirectory(src)
 
-add_executable(lua_exe src/lua.c)
-target_link_libraries(lua_exe lua)
+add_executable(sil_exe src/sil.c)
+target_link_libraries(sil_exe sil)
 
-set_target_properties(lua_exe PROPERTIES OUTPUT_NAME "lua")
+set_target_properties(sil_exe PROPERTIES OUTPUT_NAME "sil")
 
 # Link dynamic loader library on Linux/Unix
 if(UNIX)
-    target_link_libraries(lua_exe dl)
+    target_link_libraries(sil_exe dl)
 endif()
 
-install(TARGETS lua_exe
+install(TARGETS sil_exe
     RUNTIME DESTINATION bin
     COMPONENT Runtime
 )
 
-# Optional: Create luac compiler executable if needed
-# add_executable(luac_exe src/luac.c)
-# target_link_libraries(luac_exe lua)
-# set_target_properties(luac_exe PROPERTIES OUTPUT_NAME "luac")
-# install(TARGETS luac_exe RUNTIME DESTINATION bin COMPONENT Runtime)
+# Optional: Create silc compiler executable if needed
+# add_executable(silc_exe src/silc.c)
+# target_link_libraries(silc_exe sil)
+# set_target_properties(silc_exe PROPERTIES OUTPUT_NAME "silc")
+# install(TARGETS silc_exe RUNTIME DESTINATION bin COMPONENT Runtime)

@@ -1,7 +1,7 @@
 /*
 ** $Id: lopcodes.h $
-** Opcodes for Lua virtual machine
-** See Copyright Notice in lua.h
+** Opcodes for SIL virtual machine
+** See Copyright Notice in sil.h
 */
 
 #ifndef lopcodes_h
@@ -204,7 +204,7 @@ enum OpMode {iABC, ivABC, iABx, iAsBx, iAx, isJ};
 
 
 /*
-** Maximum size for the stack of a Lua function. It must fit in 8 bits.
+** Maximum size for the stack of a SIL function. It must fit in 8 bits.
 ** The highest valid register is one less than this value.
 */
 #define MAX_FSTACK	MAXARG_A
@@ -234,7 +234,7 @@ typedef enum {
 ------------------------------------------------------------------------*/
 OP_MOVE,/*	A B	R[A] := R[B]					*/
 OP_LOADI,/*	A sBx	R[A] := sBx					*/
-OP_LOADF,/*	A sBx	R[A] := (lua_Number)sBx				*/
+OP_LOADF,/*	A sBx	R[A] := (sil_Number)sBx				*/
 OP_LOADK,/*	A Bx	R[A] := K[Bx]					*/
 OP_LOADKX,/*	A	R[A] := K[extra arg]				*/
 OP_LOADFALSE,/*	A	R[A] := false					*/
@@ -412,18 +412,18 @@ OP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
 ** bit 7: instruction is an MM instruction (call a metamethod)
 */
 
-LUAI_DDEC(const lu_byte luaP_opmodes[NUM_OPCODES];)
+SILI_DDEC(const lu_byte silP_opmodes[NUM_OPCODES];)
 
-#define getOpMode(m)	(cast(enum OpMode, luaP_opmodes[m] & 7))
-#define testAMode(m)	(luaP_opmodes[m] & (1 << 3))
-#define testTMode(m)	(luaP_opmodes[m] & (1 << 4))
-#define testITMode(m)	(luaP_opmodes[m] & (1 << 5))
-#define testOTMode(m)	(luaP_opmodes[m] & (1 << 6))
-#define testMMMode(m)	(luaP_opmodes[m] & (1 << 7))
+#define getOpMode(m)	(cast(enum OpMode, silP_opmodes[m] & 7))
+#define testAMode(m)	(silP_opmodes[m] & (1 << 3))
+#define testTMode(m)	(silP_opmodes[m] & (1 << 4))
+#define testITMode(m)	(silP_opmodes[m] & (1 << 5))
+#define testOTMode(m)	(silP_opmodes[m] & (1 << 6))
+#define testMMMode(m)	(silP_opmodes[m] & (1 << 7))
 
 
-LUAI_FUNC int luaP_isOT (Instruction i);
-LUAI_FUNC int luaP_isIT (Instruction i);
+SILI_FUNC int silP_isOT (Instruction i);
+SILI_FUNC int silP_isIT (Instruction i);
 
 
 #endif

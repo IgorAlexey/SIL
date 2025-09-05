@@ -1,14 +1,14 @@
 /*
 ** $Id: lzio.h $
 ** Buffered streams
-** See Copyright Notice in lua.h
+** See Copyright Notice in sil.h
 */
 
 
 #ifndef lzio_h
 #define lzio_h
 
-#include "lua.h"
+#include "sil.h"
 
 #include "lmem.h"
 
@@ -17,7 +17,7 @@
 
 typedef struct Zio ZIO;
 
-#define zgetc(z)  (((z)->n--)>0 ?  cast_uchar(*(z)->p++) : luaZ_fill(z))
+#define zgetc(z)  (((z)->n--)>0 ?  cast_uchar(*(z)->p++) : silZ_fill(z))
 
 
 typedef struct Mbuffer {
@@ -26,29 +26,29 @@ typedef struct Mbuffer {
   size_t buffsize;
 } Mbuffer;
 
-#define luaZ_initbuffer(L, buff) ((buff)->buffer = NULL, (buff)->buffsize = 0)
+#define silZ_initbuffer(L, buff) ((buff)->buffer = NULL, (buff)->buffsize = 0)
 
-#define luaZ_buffer(buff)	((buff)->buffer)
-#define luaZ_sizebuffer(buff)	((buff)->buffsize)
-#define luaZ_bufflen(buff)	((buff)->n)
+#define silZ_buffer(buff)	((buff)->buffer)
+#define silZ_sizebuffer(buff)	((buff)->buffsize)
+#define silZ_bufflen(buff)	((buff)->n)
 
-#define luaZ_buffremove(buff,i)	((buff)->n -= cast_sizet(i))
-#define luaZ_resetbuffer(buff) ((buff)->n = 0)
+#define silZ_buffremove(buff,i)	((buff)->n -= cast_sizet(i))
+#define silZ_resetbuffer(buff) ((buff)->n = 0)
 
 
-#define luaZ_resizebuffer(L, buff, size) \
-	((buff)->buffer = luaM_reallocvchar(L, (buff)->buffer, \
+#define silZ_resizebuffer(L, buff, size) \
+	((buff)->buffer = silM_reallocvchar(L, (buff)->buffer, \
 				(buff)->buffsize, size), \
 	(buff)->buffsize = size)
 
-#define luaZ_freebuffer(L, buff)	luaZ_resizebuffer(L, buff, 0)
+#define silZ_freebuffer(L, buff)	silZ_resizebuffer(L, buff, 0)
 
 
-LUAI_FUNC void luaZ_init (lua_State *L, ZIO *z, lua_Reader reader,
+SILI_FUNC void silZ_init (sil_State *L, ZIO *z, sil_Reader reader,
                                         void *data);
-LUAI_FUNC size_t luaZ_read (ZIO* z, void *b, size_t n);	/* read next n bytes */
+SILI_FUNC size_t silZ_read (ZIO* z, void *b, size_t n);	/* read next n bytes */
 
-LUAI_FUNC const void *luaZ_getaddr (ZIO* z, size_t n);
+SILI_FUNC const void *silZ_getaddr (ZIO* z, size_t n);
 
 
 /* --------- Private Part ------------------ */
@@ -56,12 +56,12 @@ LUAI_FUNC const void *luaZ_getaddr (ZIO* z, size_t n);
 struct Zio {
   size_t n;			/* bytes still unread */
   const char *p;		/* current position in buffer */
-  lua_Reader reader;		/* reader function */
+  sil_Reader reader;		/* reader function */
   void *data;			/* additional data */
-  lua_State *L;			/* Lua state (for reader) */
+  sil_State *L;			/* SIL state (for reader) */
 };
 
 
-LUAI_FUNC int luaZ_fill (ZIO *z);
+SILI_FUNC int silZ_fill (ZIO *z);
 
 #endif

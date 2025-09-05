@@ -1,7 +1,7 @@
 /*
 ** $Id: lgc.h $
 ** Garbage Collector
-** See Copyright Notice in lua.h
+** See Copyright Notice in sil.h
 */
 
 #ifndef lgc_h
@@ -103,7 +103,7 @@
 #define nw2black(x)  \
 	check_exp(!iswhite(x), l_setbit((x)->marked, BLACKBIT))
 
-#define luaC_white(g)	cast_byte((g)->currentwhite & WHITEBITS)
+#define silC_white(g)	cast_byte((g)->currentwhite & WHITEBITS)
 
 
 /* object age in generational mode */
@@ -167,42 +167,42 @@
 */
 
 /*
-** Minor collections will shift to major ones after LUAI_MINORMAJOR%
+** Minor collections will shift to major ones after SILI_MINORMAJOR%
 ** bytes become old.
 */
-#define LUAI_MINORMAJOR         70
+#define SILI_MINORMAJOR         70
 
 /*
 ** Major collections will shift to minor ones after a collection
-** collects at least LUAI_MAJORMINOR% of the new bytes.
+** collects at least SILI_MAJORMINOR% of the new bytes.
 */
-#define LUAI_MAJORMINOR         50
+#define SILI_MAJORMINOR         50
 
 /*
-** A young (minor) collection will run after creating LUAI_GENMINORMUL%
+** A young (minor) collection will run after creating SILI_GENMINORMUL%
 ** new bytes.
 */
-#define LUAI_GENMINORMUL         20
+#define SILI_GENMINORMUL         20
 
 
 /* incremental */
 
-/* Number of bytes must be LUAI_GCPAUSE% before starting new cycle */
-#define LUAI_GCPAUSE    250
+/* Number of bytes must be SILI_GCPAUSE% before starting new cycle */
+#define SILI_GCPAUSE    250
 
 /*
-** Step multiplier: The collector handles LUAI_GCMUL% work units for
+** Step multiplier: The collector handles SILI_GCMUL% work units for
 ** each new allocated word. (Each "work unit" corresponds roughly to
 ** sweeping one object or traversing one slot.)
 */
-#define LUAI_GCMUL      200
+#define SILI_GCMUL      200
 
 /* How many bytes to allocate before next GC step */
-#define LUAI_GCSTEPSIZE	(200 * sizeof(Table))
+#define SILI_GCSTEPSIZE	(200 * sizeof(Table))
 
 
-#define setgcparam(g,p,v)  (g->gcparams[LUA_GCP##p] = luaO_codeparam(v))
-#define applygcparam(g,p,x)  luaO_applyparam(g->gcparams[LUA_GCP##p], x)
+#define setgcparam(g,p,v)  (g->gcparams[SIL_GCP##p] = silO_codeparam(v))
+#define applygcparam(g,p,x)  silO_applyparam(g->gcparams[SIL_GCP##p], x)
 
 /* }====================================================== */
 
@@ -212,7 +212,7 @@
 */
 #define GCSTPUSR	1  /* bit true when GC stopped by user */
 #define GCSTPGC		2  /* bit true when GC stopped by itself */
-#define GCSTPCLS	4  /* bit true when closing Lua state */
+#define GCSTPCLS	4  /* bit true when closing SIL state */
 #define gcrunning(g)	((g)->gcstp == 0)
 
 
@@ -227,42 +227,42 @@
 #define condchangemem(L,pre,pos,emg)	((void)0)
 #else
 #define condchangemem(L,pre,pos,emg)  \
-	{ if (gcrunning(G(L))) { pre; luaC_fullgc(L, emg); pos; } }
+	{ if (gcrunning(G(L))) { pre; silC_fullgc(L, emg); pos; } }
 #endif
 
-#define luaC_condGC(L,pre,pos) \
-	{ if (G(L)->GCdebt <= 0) { pre; luaC_step(L); pos;}; \
+#define silC_condGC(L,pre,pos) \
+	{ if (G(L)->GCdebt <= 0) { pre; silC_step(L); pos;}; \
 	  condchangemem(L,pre,pos,0); }
 
 /* more often than not, 'pre'/'pos' are empty */
-#define luaC_checkGC(L)		luaC_condGC(L,(void)0,(void)0)
+#define silC_checkGC(L)		silC_condGC(L,(void)0,(void)0)
 
 
-#define luaC_objbarrier(L,p,o) (  \
+#define silC_objbarrier(L,p,o) (  \
 	(isblack(p) && iswhite(o)) ? \
-	luaC_barrier_(L,obj2gco(p),obj2gco(o)) : cast_void(0))
+	silC_barrier_(L,obj2gco(p),obj2gco(o)) : cast_void(0))
 
-#define luaC_barrier(L,p,v) (  \
-	iscollectable(v) ? luaC_objbarrier(L,p,gcvalue(v)) : cast_void(0))
+#define silC_barrier(L,p,v) (  \
+	iscollectable(v) ? silC_objbarrier(L,p,gcvalue(v)) : cast_void(0))
 
-#define luaC_objbarrierback(L,p,o) (  \
-	(isblack(p) && iswhite(o)) ? luaC_barrierback_(L,p) : cast_void(0))
+#define silC_objbarrierback(L,p,o) (  \
+	(isblack(p) && iswhite(o)) ? silC_barrierback_(L,p) : cast_void(0))
 
-#define luaC_barrierback(L,p,v) (  \
-	iscollectable(v) ? luaC_objbarrierback(L, p, gcvalue(v)) : cast_void(0))
+#define silC_barrierback(L,p,v) (  \
+	iscollectable(v) ? silC_objbarrierback(L, p, gcvalue(v)) : cast_void(0))
 
-LUAI_FUNC void luaC_fix (lua_State *L, GCObject *o);
-LUAI_FUNC void luaC_freeallobjects (lua_State *L);
-LUAI_FUNC void luaC_step (lua_State *L);
-LUAI_FUNC void luaC_runtilstate (lua_State *L, int state, int fast);
-LUAI_FUNC void luaC_fullgc (lua_State *L, int isemergency);
-LUAI_FUNC GCObject *luaC_newobj (lua_State *L, lu_byte tt, size_t sz);
-LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz,
+SILI_FUNC void silC_fix (sil_State *L, GCObject *o);
+SILI_FUNC void silC_freeallobjects (sil_State *L);
+SILI_FUNC void silC_step (sil_State *L);
+SILI_FUNC void silC_runtilstate (sil_State *L, int state, int fast);
+SILI_FUNC void silC_fullgc (sil_State *L, int isemergency);
+SILI_FUNC GCObject *silC_newobj (sil_State *L, lu_byte tt, size_t sz);
+SILI_FUNC GCObject *silC_newobjdt (sil_State *L, lu_byte tt, size_t sz,
                                                  size_t offset);
-LUAI_FUNC void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v);
-LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
-LUAI_FUNC void luaC_checkfinalizer (lua_State *L, GCObject *o, Table *mt);
-LUAI_FUNC void luaC_changemode (lua_State *L, int newmode);
+SILI_FUNC void silC_barrier_ (sil_State *L, GCObject *o, GCObject *v);
+SILI_FUNC void silC_barrierback_ (sil_State *L, GCObject *o);
+SILI_FUNC void silC_checkfinalizer (sil_State *L, GCObject *o, Table *mt);
+SILI_FUNC void silC_changemode (sil_State *L, int newmode);
 
 
 #endif

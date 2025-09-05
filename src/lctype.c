@@ -1,23 +1,23 @@
 /*
 ** $Id: lctype.c $
-** 'ctype' functions for Lua
-** See Copyright Notice in lua.h
+** 'ctype' functions for SIL
+** See Copyright Notice in sil.h
 */
 
 #define lctype_c
-#define LUA_CORE
+#define SIL_CORE
 
 #include "lprefix.h"
 
 
 #include "lctype.h"
 
-#if !LUA_USE_CTYPE	/* { */
+#if !SIL_USE_CTYPE	/* { */
 
 #include <limits.h>
 
 
-#if defined (LUA_UCID)		/* accept UniCode IDentifiers? */
+#if defined (SIL_UCID)		/* accept UniCode IDentifiers? */
 /* consider all non-ascii codepoints to be alphabetic */
 #define NONA		0x01
 #else
@@ -25,7 +25,7 @@
 #endif
 
 
-LUAI_DDEF const lu_byte luai_ctype_[UCHAR_MAX + 2] = {
+SILI_DDEF const lu_byte sili_ctype_[UCHAR_MAX + 2] = {
   0x00,  /* EOZ */
   0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,	/* 0. */
   0x00,  0x08,  0x08,  0x08,  0x08,  0x08,  0x00,  0x00,
