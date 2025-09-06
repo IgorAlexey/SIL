@@ -47,7 +47,7 @@ static const char *const silX_tokens [] = {
     "false", "for", "fn", "global", "goto", "if",
     "in", "local", "nil", "not", "or", "repeat",
     "return", "true", "until", "while",
-    "//", "..", "...", "==", ">=", "<=", "!=",
+    "///", "..", "...", "==", ">=", "<=", "!=",
     "<<", ">>", "::", "<eof>",
     "<number>", "<integer>", "<name>", "<string>"
 };
@@ -476,25 +476,6 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         next(ls);
         break;
       }
-      case '-': {  /* '-' or '--' (comment) */
-        next(ls);
-        if (ls->current != '-') return '-';
-        /* else is a comment */
-        next(ls);
-        if (ls->current == '[') {  /* long comment? */
-          size_t sep = skip_sep(ls);
-          silZ_resetbuffer(ls->buff);  /* 'skip_sep' may dirty the buffer */
-          if (sep >= 2) {
-            read_long_string(ls, NULL, sep);  /* skip long comment */
-            silZ_resetbuffer(ls->buff);  /* previous call may dirty the buff. */
-            break;
-          }
-        }
-        /* else short comment */
-        while (!currIsNewline(ls) && ls->current != EOZ)
-          next(ls);  /* skip until end of line (or end of file) */
-        break;
-      }
       case '[': {  /* long string or simply '[' */
         size_t sep = skip_sep(ls);
         if (sep >= 2) {
@@ -525,11 +506,37 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       case '/': {
         next(ls);
         if (check_next1(ls, '/')) return TK_IDIV;  /* '//' */
-        else return '/';
+        else if (check_next1(ls, '*')) {  /* block comment */
+          for (;;) {
+            switch (ls->current) {
+              case EOZ: {
+                lexerror(ls, "unfinished block comment", TK_EOS);
+                break;  /* to avoid warnings */
+              }
+              case '*': {
+                next(ls);
+                if (ls->current == '/') {
+                  next(ls);
+                  goto end_comment;
+                }
+                break;
+              }
+              case '\n': case '\r': {
+                inclinenumber(ls);
+                break;
+              }
+              default: {
+                next(ls);
+              }
+            }
+          }
+          end_comment:;
+          break;
+        }
       }
       case '!': {
         next(ls);
-        if (check_next1(ls, '=')) return TK_NE;  /* '~=' */
+        if (check_next1(ls, '=')) return TK_NE;  /* '!=' */
         else return '!';
       }
       case ':': {
@@ -601,4 +608,3 @@ int silX_lookahead (LexState *ls) {
   ls->lookahead.token = llex(ls, &ls->lookahead.seminfo);
   return ls->lookahead.token;
 }
-
