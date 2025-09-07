@@ -819,6 +819,72 @@ static void yindex(LexState *ls, expdesc *v) {
   checknext(ls, ']');
 }
 
+static void enumstat(LexState *ls) {
+  /* enumstat -> ENUM NAME '{' enumfields '}' */
+  FuncState *fs = ls->fs;
+  sil_Integer nextval = 0;
+  int line = ls->linenumber;
+  int pc;
+  
+  silX_next(ls); /* skip ENUM */
+  TString *enumname = str_checkname(ls);
+  
+  checknext(ls, '{');
+  
+  /* Create the enum table using OP_NEWTABLE */
+  pc = silK_codevABCk(fs, OP_NEWTABLE, 0, 0, 0, 0);
+  silK_code(fs, 0); /* space for extra arg */
+  
+  expdesc enumtable;
+  init_exp(&enumtable, VNONRELOC, fs->freereg);
+  silK_reserveregs(fs, 1);
+  
+  int nh = 0; /* number of hash elements */
+  
+  if (ls->t.token != '}') {
+    do {
+      /* Get field name */
+      TString *fieldname = str_checkname(ls);
+      sil_Integer value;
+      
+      if (testnext(ls, '=')) {
+        expdesc e;
+        TValue k;
+        expr(ls, &e);
+        if (!silK_exp2const(fs, &e, &k) || !ttisinteger(&k)) {
+          silX_syntaxerror(ls, "enum values must be compile-time integer constants");
+        }
+        value = ivalue(&k);
+        nextval = value + 1;
+      } else {
+        value = nextval++;
+      }
+      
+      /* Store field in table: enumtable[fieldname] = value */
+      expdesc key, val;
+      codestring(&key, fieldname);
+      init_exp(&val, VKINT, 0);
+      val.u.ival = value;
+      
+      expdesc tab = enumtable;
+      silK_indexed(fs, &tab, &key);
+      silK_storevar(fs, &tab, &val);
+      nh++;
+      
+    } while (testnext(ls, ','));
+  }
+  
+  check_match(ls, '}', TK_ENUM, line);
+  
+  /* Set the table size */
+  silK_settablesize(fs, pc, enumtable.u.info, 0, nh);
+  
+  /* Store the enum table in the global variable */
+  expdesc var;
+  buildvar(ls, enumname, &var);
+  silK_storevar(fs, &var, &enumtable);
+}
+
 /*
 ** {======================================================================
 ** Rules for Constructors
@@ -1891,6 +1957,10 @@ static void statement(LexState *ls) {
   }
   case TK_FUNCTION: { /* stat -> funcstat */
     funcstat(ls, line);
+    break;
+  }
+  case TK_ENUM: { /* stat -> enumstat */
+    enumstat(ls);
     break;
   }
   case TK_LOCAL: {                 /* stat -> localstat */
