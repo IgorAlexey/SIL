@@ -21,7 +21,18 @@ install(TARGETS sil_exe
     COMPONENT Runtime
 )
 
-# Optional: Create silc compiler executable if needed
+install(TARGETS sil
+    LIBRARY DESTINATION lib     # for shared
+    ARCHIVE DESTINATION lib     # for static
+    INCLUDES DESTINATION include
+)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/
+    DESTINATION include/sil
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# Optional: Create silc compiler executable
 # add_executable(silc_exe src/silc.c)
 # target_link_libraries(silc_exe sil)
 # set_target_properties(silc_exe PROPERTIES OUTPUT_NAME "silc")
